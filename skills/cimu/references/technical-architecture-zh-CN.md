@@ -161,7 +161,7 @@ job.json
 发布验收分两层：
 
 1. `release-check.mjs`：检查 Node 20+、FFmpeg、FFprobe、Chrome/Chromium 与核心自检，适用于独立安装包。
-2. `release-check.mjs --with-goldens`：在源仓库附加生产 golden matrix，验证每个受支持 profile 的短 16:9 H.264/AAC 回归样片。
+2. `release-check.mjs --with-goldens`：验证随源仓库发布的 20 秒 16:9 H.264/AAC 参考成片及其时间轴、画像、视觉计划和校验侧车。
 
 自动校验不能替代人工观看。完整审阅必须抽查开场、文本最密集处、hook/hero、转场和结尾，并确认文字未被高亮背景、模糊、光效或次级元素遮挡。
 

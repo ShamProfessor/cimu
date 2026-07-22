@@ -125,7 +125,7 @@ job.json                    本次渲染的参数快照
 node scripts/release-check.mjs
 ```
 
-在源项目中做完整发布回归时运行：
+在源项目中检查随仓库发布的 20 秒参考成片时运行：
 
 ```bash
 node scripts/release-check.mjs --with-goldens

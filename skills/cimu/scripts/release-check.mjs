@@ -16,9 +16,9 @@ function run(name, script, args = []) {
 run('runtime', 'check-runtime.mjs', ['--json']);
 run('self-test', 'self-test.mjs');
 if (withGoldens) {
-  const manifest = resolve(projectRoot, 'test/production-golden-clips.json');
-  if (!existsSync(manifest)) checks.push({name:'production-goldens', passed:false, output:`Source-repository regression manifest not found: ${manifest}`});
-  else run('production-goldens', 'validate-golden-clips.mjs', ['--manifest', manifest]);
+  const manifest = resolve(projectRoot, 'examples/dont-touch-my-code/20s-sample/golden-clip.json');
+  if (!existsSync(manifest)) checks.push({name:'golden-reference', passed:false, output:`Tracked 20-second golden reference manifest not found: ${manifest}`});
+  else run('golden-reference', 'validate-golden-clips.mjs', ['--manifest', manifest]);
 }
 const report = {schemaVersion:1, skillRoot, withGoldens, checks, passed:checks.every((check) => check.passed)};
 if (asJson) console.log(JSON.stringify(report, null, 2));

@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 2,
+  "title": "Don't Touch My Code — 20s sample",
+  "audio": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/dont-touch-my-code.mp3",
+  "cover": null,
+  "sourceStartSeconds": 18.93,
+  "durationSeconds": 20,
+  "lyricSource": {
+    "kind": "lrc",
+    "path": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/dont-touch-my-code.lrc",
+    "alignment": null,
+    "timingStatus": "timed-lrc"
+  },
+  "review": {
+    "required": false,
+    "reason": null
+  },
+  "lines": [
+    {
+      "start": 0,
+      "end": 1.2,
+      "text": "Don't touch my code",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "Don't touch",
+        "my code"
+      ],
+      "groupStarts": [
+        0.08,
+        0.44
+      ],
+      "role": "hook",
+      "importance": 5,
+      "directionEvidence": {
+        "repeated": true,
+        "punctuationOrKeywordPunchline": true,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 1.2,
+      "end": 2.43,
+      "text": "我代码都镶钻",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "我代码都镶钻"
+      ],
+      "groupStarts": [
+        1.28
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 2.43,
+      "end": 4.89,
+      "text": "我们代表新一代那种高级商贩",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "我们代表新一代",
+        "那种高级商贩"
+      ],
+      "groupStarts": [
+        2.51,
+        2.87
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 4.89,
+      "end": 6.06,
+      "text": "Don't touch my code",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "Don't touch",
+        "my code"
+      ],
+      "groupStarts": [
+        4.97,
+        5.33
+      ],
+      "role": "hook",
+      "importance": 5,
+      "directionEvidence": {
+        "repeated": true,
+        "punctuationOrKeywordPunchline": true,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 6.06,
+      "end": 7.35,
+      "text": "发际线往上窜",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "发际线往上窜"
+      ],
+      "groupStarts": [
+        6.14
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 7.35,
+      "end": 9.6,
+      "text": "我戴表但我每天忙的老是忘看",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "我戴表但我每天",
+        "忙的老是忘看"
+      ],
+      "groupStarts": [
+        7.43,
+        7.79
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 9.6,
+      "end": 12.24,
+      "text": "每天都在忙着项目要跟产品对线",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "每天都在忙着项",
+        "目要跟产品对线"
+      ],
+      "groupStarts": [
+        9.68,
+        10.04
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 12.24,
+      "end": 14.4,
+      "text": "上次说的需求让我赶紧兑现",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "上次说的需求",
+        "让我赶紧兑现"
+      ],
+      "groupStarts": [
+        12.32,
+        12.68
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 14.4,
+      "end": 16.77,
+      "text": "说我 deadline为什么像女友心情会变",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "说我 dead",
+        "line为什么",
+        "像女友心情会变"
+      ],
+      "groupStarts": [
+        14.48,
+        14.82,
+        15.16
+      ],
+      "role": "punchline",
+      "importance": 5,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": true,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 16.77,
+      "end": 19.5,
+      "text": "我说测试档期满时间得掰成碎片",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "我说测试档期满",
+        "时间得掰成碎片"
+      ],
+      "groupStarts": [
+        16.85,
+        17.21
+      ],
+      "role": "verse",
+      "importance": 3,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    },
+    {
+      "start": 19.5,
+      "end": 20,
+      "text": "看看最近需求为什么又多了几个产品笑着说",
+      "confidence": 1,
+      "timingSource": "lrc",
+      "groups": [
+        "看看最近需求为什么又",
+        "多了几个产品笑着说"
+      ],
+      "groupStarts": [
+        19.55,
+        19.775
+      ],
+      "role": "release",
+      "importance": 4,
+      "directionEvidence": {
+        "repeated": false,
+        "punctuationOrKeywordPunchline": false,
+        "regrouped": true
+      }
+    }
+  ],
+  "sourceTimeline": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/timeline.json",
+  "songProfile": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/song-profile.json",
+  "creativeDirection": {
+    "method": "deterministic-heuristics-v1",
+    "review": {
+      "required": true,
+      "reason": "Role and hero-treatment proposals are editable. Confirm artist intent, punchlines, and section boundaries before final delivery."
+    },
+    "profile": "code-collision"
+  }
+}

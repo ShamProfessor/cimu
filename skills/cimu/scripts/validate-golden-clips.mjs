@@ -31,6 +31,10 @@ for (const clip of manifest.clips) {
   if (errors.some((error) => error.clip === label)) continue;
   const validation = readJson(clip.artifacts.validation);
   if (!validation.passed) errors.push({clip:label, code:'timeline-validation-failed', details:validation.errors});
+  if (clip.artifacts.deliveryValidation) {
+    const deliveryValidation = readJson(clip.artifacts.deliveryValidation);
+    if (!deliveryValidation.passed) errors.push({clip:label, code:'delivery-validation-failed', details:deliveryValidation.errors});
+  }
   const plan = readJson(clip.artifacts.stylePlan);
   if (plan.profile !== clip.profile) errors.push({clip:label, code:'profile-mismatch', expected:clip.profile, actual:plan.profile});
   if (!plan.template) errors.push({clip:label, code:'missing-template'});

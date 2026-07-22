@@ -23,7 +23,7 @@ const templates = {
 };
 
 function parseArgs(argv) {
-  const values = {start: 0, from: 0, duration: 30, timelineDuration: null, width: 1280, height: 720, fps: 30, port: null, startupTimeout: 30, renderTimeout: 240, encodeTimeout: 240};
+  const values = {start: 0, from: 0, duration: 30, timelineDuration: null, width: 1280, height: 720, fps: 30, port: null, startupTimeout: 30, renderTimeout: 360, encodeTimeout: 240};
   for (let i = 2; i < argv.length; i += 1) {
     const key = argv[i];
     if (!key.startsWith('--')) continue;

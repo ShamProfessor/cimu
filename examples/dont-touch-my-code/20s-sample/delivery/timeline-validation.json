@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "durationSeconds": 20,
+  "lineCount": 11,
+  "errors": [],
+  "warnings": [
+    {
+      "code": "short-dwell",
+      "line": 10,
+      "message": "第 11 行 停留不足 0.6 秒。"
+    }
+  ],
+  "passed": true,
+  "timeline": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/direction.json"
+}

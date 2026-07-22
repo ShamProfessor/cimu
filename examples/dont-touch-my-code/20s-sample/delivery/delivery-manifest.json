@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "sample": "dont-touch-my-code-20s",
+  "status": "passed",
+  "artifacts": {
+    "timeline": "../timeline.json",
+    "audioProfile": "audio.json",
+    "songProfile": "song-profile.json",
+    "direction": "direction.json",
+    "stylePlan": "style-plan.json",
+    "timelineValidation": "timeline-validation.json",
+    "video": "master-16x9.mp4",
+    "videoValidation": "delivery-validation.json"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "sourceTimeline": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/timeline.json",
+  "analysisMethod": "deterministic-heuristics-v1",
+  "review": {
+    "required": true,
+    "reason": "Genre, imagery, and profile are a proposal; artist may override before style resolution."
+  },
+  "musicProfile": {
+    "genre": "rap",
+    "energy": "measured",
+    "vocalDensity": "spacious",
+    "emotionalArc": "impact-to-declaration",
+    "visualRegister": "code-collision",
+    "typeRegister": "display-plus-emphasis",
+    "backgroundStrategy": "profile-procedural-plate",
+    "motifPack": [],
+    "avoid": [
+      "generic-red-black-default",
+      "system-emoji"
+    ]
+  },
+  "visualProfile": "code-collision",
+  "evidence": {
+    "lineCount": 11,
+    "rmsAverage": 0.5016,
+    "bassAverage": 0.2132,
+    "keywordReasons": [
+      "lyric vocabulary suggests rhythmic delivery",
+      "visual profile explicitly selected by artist/editor"
+    ]
+  }
+}

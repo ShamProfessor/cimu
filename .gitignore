@@ -4,6 +4,7 @@ dist/
 
 # Generated renders and local reference-video studies do not belong in source control.
 *.mp4
+!examples/dont-touch-my-code/20s-sample/delivery/master-16x9.mp4
 Rapeter-*.mp4
 不太准字幕MV_*.mp4
 字幕视频Top_*.mp4

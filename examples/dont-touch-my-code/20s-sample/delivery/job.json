@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "audio": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/dont-touch-my-code.mp3",
+  "timeline": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/timeline.json",
+  "sourceStartSeconds": 18.93,
+  "durationSeconds": 20,
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "visualProfile": "code-collision"
+}
