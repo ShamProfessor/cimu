@@ -26,7 +26,7 @@ Every adapter writes the existing sidecar contract:
 TENCENT_ASR_APP_ID='…' \
 TENCENT_SECRET_ID='…' \
 TENCENT_SECRET_KEY='…' \
-node skill/cimu/scripts/asr/tencent-flash.mjs \
+node skills/cimu/scripts/asr/tencent-flash.mjs \
   --input song.mp3 \
   --lyrics lyrics.txt \
   --engine 16k_zh_en \
@@ -38,10 +38,10 @@ node skill/cimu/scripts/asr/tencent-flash.mjs \
 Then build and validate the delivery timeline:
 
 ```bash
-node skill/cimu/scripts/build-lyric-timeline.mjs \
+node skills/cimu/scripts/build-lyric-timeline.mjs \
   --text lyrics.txt --alignment song.asr.json --audio song.mp3 \
   --start 0 --duration 30 --out song.timeline.json
-node skill/cimu/scripts/validate-lyric-timeline.mjs --timeline song.timeline.json
+node skills/cimu/scripts/validate-lyric-timeline.mjs --timeline song.timeline.json
 ```
 
 ## Review policy

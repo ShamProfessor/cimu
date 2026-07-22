@@ -1,4 +1,0 @@
-interface:
-  display_name: "词幕 Cimu"
-  short_description: "将音频与歌词制作成可审阅可验证的专业歌词视觉 MV 交付包"
-  default_prompt: "Use $cimu to turn my audio and reviewed lyrics into a validated 16:9 lyric MV delivery package."

@@ -1,76 +1,50 @@
 # Cimu（词幕）
 
-> 把歌词做成画面。
+> 直接对 Agent 说一句话，把本地音频和歌词做成可审阅的歌词 MV。
 
-Cimu 是一个本地优先、可审阅、可复现的歌词视觉 MV Skill。它将音频与 LRC、SRT、ASS 或纯文本歌词转换为经过时间轴和成片校验的 H.264/AAC MV 交付包。
+Cimu 是一个可安装的 Agent Skill：Agent 会处理歌词时间轴、视觉路线、渲染和交付校验；用户不需要运行 Node、FFmpeg 或 JSON 命令。
 
-## 能力
+## 安装
 
-- 将 LRC、SRT、ASS 归一化为可审阅歌词时间轴；纯文本可在本地编辑器中逐句校时。
-- 根据音频画像和歌词语义选择确定性视觉路线，并将字体、背景、动效方案落盘。
-- 使用本地 Chrome、原生 WebGL/Canvas 与 FFmpeg 生成 16:9 H.264/AAC 成片。
-- 输出时间轴、音频画像、歌曲画像、方向、样式方案及验证报告，支持完整复跑。
+安装到当前 Agent 的全局 Skill 目录：
 
-## 安装到 Codex
+```bash
+npx skills add https://github.com/ShamProfessor/cimu --skill cimu -g
+```
 
-在 Codex 中使用 Skill Installer，指定本仓库中的 skill 目录：
+这条命令不绑定任何特定 Agent：安装器会交互选择本机可用的目标。仓库不需要发布为 npm 包：`npx skills` 安装的是本仓库中 `skills/cimu` 的 Skill 定义和随附资源。
+
+## 怎么用
+
+安装后，在对话中直接说：
 
 ```text
-$skill-installer install https://github.com/ShamProfessor/cimu/tree/main/skill/cimu
+用 cimu 把这个 MP3 和 LRC 做成 30 秒、16:9 的歌词 MV。
 ```
 
-或克隆本仓库后，将 `skill/cimu` 复制到 `~/.codex/skills/cimu`，并重启 Codex。
-
-## 环境
-
-- Node.js 20+
-- FFmpeg 与 FFprobe
-- Google Chrome 或 Chromium
-
-```bash
-node skill/cimu/scripts/check-runtime.mjs
-```
-
-若 Chrome 未被自动发现，设置 `LYRIC_MV_CHROME_PATH` 为浏览器可执行文件的绝对路径。
-
-## 快速开始
-
-```bash
-node skill/cimu/scripts/build-lyric-timeline.mjs \
-  --lrc "/absolute/path/song.lrc" \
-  --duration 30 \
-  --out "/absolute/path/work/song.timeline.json"
-
-node skill/cimu/scripts/validate-lyric-timeline.mjs \
-  --timeline "/absolute/path/work/song.timeline.json"
-
-node skill/cimu/scripts/run-delivery.mjs \
-  --audio "/absolute/path/song.mp3" \
-  --timeline "/absolute/path/work/song.timeline.json" \
-  --out "/absolute/path/delivery" \
-  --visual-profile code-collision
-```
-
-只有纯文本时，先运行 `node skill/cimu/scripts/serve-timeline-editor.mjs`，在本地编辑器中完成逐句校时、审阅并导出 `.reviewed.json`。
-
-## 示例与验证
-
-仓库中的 `examples/dont-touch-my-code/` 是 Cimu 的原创音频与 LRC 示例。运行基础自检：
-
-```bash
-node test/timeline-editor-core.test.mjs
-node skill/cimu/scripts/release-check.mjs
-```
-
-详细操作见 [中文使用指南](skill/cimu/references/user-guide-zh-CN.md)，实现边界见 [中文技术架构](skill/cimu/references/technical-architecture-zh-CN.md)。
-
-## 目录
+也可以这样说：
 
 ```text
-skill/cimu/       可直接安装的 Codex Skill
-test/             核心时间轴测试与固定夹具
-examples/         可公开分发的原创示例音频与歌词
+用 cimu 做一条 9:16 的歌词视频；我只有音频和纯文本歌词。
 ```
+
+```text
+用 cimu 检查这份 LRC 的时间轴问题，修好后渲染完整横版 MV。
+```
+
+Agent 会先确认音频、歌词、目标片段和画幅；有 LRC/SRT/ASS 时自动处理时间码，只有纯文本时会启动本地校时编辑器并引导你完成必要的人审。最终会交付 MP4 和校验报告。
+
+## 运行条件
+
+Cimu 在本机执行渲染，需要 Node.js 20+、FFmpeg/FFprobe 与 Google Chrome 或 Chromium。首次使用时直接让 Agent 检查环境；缺少组件时，它会说明需要安装的项目，而不是要求你猜命令。
+
+## 兼容性
+
+Skill 的核心是标准 `SKILL.md` 文件和本地资源，不依赖任何特定 Agent 的私有命令或元数据。它可用于能够读取 Agent Skills、访问本地文件并运行 Node/FFmpeg 的 Agent；不同 Agent 的安装目录和文件授权提示由各自客户端处理。
+
+## 开发与维护
+
+脚本参数、时间轴合同、回归校验和发布检查仅供维护者使用，见 [开发文档](docs/DEVELOPMENT.md)。普通使用不需要打开这份文档。
 
 ## 许可证
 

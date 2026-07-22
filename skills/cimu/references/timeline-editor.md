@@ -3,7 +3,7 @@
 Start the editor with the bundled local server, then open the printed loopback URL in a modern browser:
 
 ```bash
-node skill/cimu/scripts/serve-timeline-editor.mjs
+node skills/cimu/scripts/serve-timeline-editor.mjs
 ```
 
 It needs no package installation, login, upload, or cloud storage. The server only exposes files inside this skill on `127.0.0.1`.
