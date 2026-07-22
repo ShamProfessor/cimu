@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>歌词字幕时间轴编辑器</title>
+  <style>
+    :root { --ink:#1b1d1b; --ink-2:#292c29; --paper:#f4f3ec; --surface:#fffef9; --line:#d8d6cb; --muted:#73756e; --moss:#66883e; --moss-dark:#456224; --coral:#c55b48; --amber:#b88424; --blue:#477393; --shadow:0 10px 30px rgba(20,25,19,.10); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--ink); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:1060px; min-height:100vh; background:var(--paper); }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; }
+    .topbar { height:72px; padding:0 28px; display:flex; align-items:center; gap:10px; background:linear-gradient(115deg,#181a18,#282b28); color:#f7f6ef; box-shadow:0 2px 10px rgba(0,0,0,.16); }
+    .brand { margin-right:24px; font-size:20px; font-weight:750; letter-spacing:.02em; white-space:nowrap; }
+    .toolbar { display:flex; height:100%; align-items:center; gap:4px; flex:1; }
+    .tool { border:0; border-left:1px solid rgba(255,255,255,.13); background:transparent; color:#edeee9; min-width:112px; height:46px; padding:0 14px; font-weight:650; font-size:14px; }
+    .tool:hover { background:rgba(255,255,255,.08); }
+    .tool.final { margin-left:auto; color:#b8d98d; border-left:0; }
+    .tool.final[data-final="true"] { color:#fff; background:#52782e; }
+    .workspace { display:grid; grid-template-columns:minmax(680px,1.85fr) minmax(350px,.85fr); min-height:calc(100vh - 72px - 48px); }
+    .editor { padding:26px 28px 28px; border-right:1px solid #d0cec3; }
+    .meta { display:flex; align-items:end; gap:16px; margin-bottom:18px; }
+    .meta label { display:grid; gap:6px; font-size:12px; color:var(--muted); font-weight:700; letter-spacing:.03em; }
+    .meta input { height:34px; border:0; border-bottom:1px solid #b9b8af; background:transparent; outline:none; min-width:220px; color:var(--ink); font-size:16px; font-weight:700; }
+    .meta input:focus { border-color:var(--moss); }
+    .meta .meta-stat { padding:0 0 8px; color:#555851; font-size:14px; }
+    .empty { min-height:500px; display:grid; place-items:center; border:1px dashed #b9b9ad; background:rgba(255,255,255,.32); color:var(--muted); text-align:center; padding:48px; }
+    .empty h1 { margin:0 0 12px; color:var(--ink); font-size:27px; }
+    .empty p { max-width:500px; margin:0 auto 20px; line-height:1.7; }
+    .empty-actions { display:flex; justify-content:center; gap:10px; }
+    .table-shell { overflow:auto; border:1px solid var(--line); border-radius:7px; background:var(--surface); box-shadow:var(--shadow); }
+    table { width:100%; border-collapse:collapse; min-width:840px; }
+    th { height:50px; text-align:left; padding:0 12px; background:#f0efe7; border-bottom:1px solid var(--line); font-size:12px; letter-spacing:.04em; color:#50524d; }
+    td { padding:9px 12px; border-bottom:1px solid #e6e4da; vertical-align:middle; }
+    tr:last-child td { border-bottom:0; }
+    tr.active td { background:#eff5df; }
+    tr.invalid td { box-shadow:inset 3px 0 0 var(--coral); }
+    .row-num { width:45px; text-align:center; color:#787a73; font-variant-numeric:tabular-nums; }
+    .lyric-input { width:100%; min-width:250px; height:42px; resize:vertical; padding:9px 10px; border:1px solid #d1d0c8; border-radius:5px; background:#fffefa; line-height:1.35; }
+    .time-control { display:inline-grid; grid-template-columns:25px 96px 25px; align-items:center; border:1px solid #d1d0c8; border-radius:5px; overflow:hidden; background:#fffefa; }
+    .time-input { width:96px; height:38px; padding:7px; border:0; border-radius:0; background:#fffefa; font-variant-numeric:tabular-nums; text-align:center; outline:none; }
+    .time-input:focus { box-shadow:inset 0 0 0 2px rgba(102,136,62,.5); }
+    .time-step { width:25px; height:38px; padding:0; border:0; border-right:1px solid #dfddd2; background:#f3f2ea; color:#5f625b; font-size:16px; line-height:1; }
+    .time-step:last-child { border-right:0; border-left:1px solid #dfddd2; }
+    .time-step:hover { background:#e1ead0; color:var(--moss-dark); }
+    .duration { color:#575a53; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .row-actions { white-space:nowrap; }
+    .row-actions button { width:28px; height:28px; padding:0; border:0; border-radius:4px; background:transparent; color:#5e615b; font-size:17px; }
+    .row-actions button:hover { background:#e4e6da; color:var(--moss-dark); }
+    .row-actions .danger:hover { background:#f4dfda; color:var(--coral); }
+    .bottom-actions { display:flex; align-items:center; gap:10px; padding-top:18px; }
+    .button { height:38px; padding:0 14px; border:1px solid #c7c7bd; border-radius:5px; background:#fffefa; color:var(--ink); font-size:13px; font-weight:700; }
+    .button:hover { border-color:var(--moss); color:var(--moss-dark); }
+    .button.primary { border-color:var(--moss-dark); background:var(--moss); color:#fff; }
+    .button.danger { color:var(--coral); }
+    .hint { margin-left:auto; color:#7a7c74; font-size:12px; }
+    .side { background:var(--ink-2); color:#f6f6ef; }
+    .side section { padding:22px 24px; border-bottom:1px solid rgba(255,255,255,.12); }
+    .side h2 { margin:0 0 16px; font-size:16px; letter-spacing:.03em; }
+    .audio-name { display:flex; justify-content:space-between; gap:12px; margin-bottom:12px; color:#bbbeb5; font-size:12px; }
+    audio { width:100%; height:36px; filter:sepia(.25) saturate(.7); }
+    .progress { width:100%; accent-color:#91b85c; }
+    .preview { min-height:188px; display:grid; align-content:center; justify-items:center; padding:28px 12px; background:radial-gradient(circle at 50% 50%,#34382e 0,#292c29 70%); text-align:center; }
+    .preview .lyric { font-size:clamp(27px,3vw,45px); font-weight:850; line-height:1.35; color:#d2e9a8; text-shadow:0 3px 20px rgba(192,226,120,.18); word-break:break-word; }
+    .preview .timing { margin-top:12px; color:#aac777; font-size:13px; font-variant-numeric:tabular-nums; }
+    .validation-head { display:flex; justify-content:space-between; align-items:center; }
+    .validation-count { color:#ced0c8; font-size:13px; }
+    .validation-count.bad { color:#ff8a75; }
+    .issues { display:grid; gap:8px; }
+    .issue { width:100%; display:grid; grid-template-columns:24px 1fr; gap:9px; text-align:left; padding:10px; border:1px solid rgba(255,255,255,.16); border-radius:5px; color:#f4f4ef; background:transparent; }
+    .issue:hover { border-color:rgba(212,232,171,.7); }
+    .issue .severity { font-size:15px; text-align:center; }
+    .issue.error .severity { color:#ff8a75; } .issue.warning .severity { color:#f0bc54; } .issue.ok .severity { color:#9aca67; }
+    .issue strong { display:block; font-size:13px; } .issue span { display:block; margin-top:2px; color:#bcbeb6; font-size:12px; line-height:1.4; }
+    .settings { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .settings label { display:grid; gap:5px; color:#bfc1ba; font-size:12px; }
+    .settings input { height:34px; padding:6px 8px; border:1px solid rgba(255,255,255,.24); border-radius:4px; background:#1c1f1c; color:#fff; }
+    .paste-panel { display:none; margin-bottom:18px; padding:16px; border:1px solid var(--line); background:#fbfaf3; }
+    .paste-panel.open { display:grid; gap:10px; }
+    .paste-panel textarea { min-height:120px; padding:10px; border:1px solid #cbcabe; border-radius:5px; resize:vertical; }
+    .status { height:48px; display:flex; align-items:center; gap:26px; padding:0 28px; background:#202320; color:#d4d5ce; font-size:12px; border-top:1px solid #171917; }
+    .status .ready { color:#b4d782; } .status .status-right { margin-left:auto; font-variant-numeric:tabular-nums; }
+    .hidden { display:none !important; }
+    @media (max-width:1120px) { body{min-width:0}.workspace{grid-template-columns:1fr}.side{border-top:1px solid #d0cec3}.editor{border-right:0}.topbar{overflow-x:auto}.brand{margin-right:6px}.tool{min-width:auto}.side section{padding:18px}.status{gap:14px}.hint{display:none} }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">歌词字幕时间轴编辑器</div>
+    <nav class="toolbar" aria-label="编辑器工具">
+      <button class="tool" id="importLyrics">⌑　导入歌词</button>
+      <button class="tool" id="pasteLyrics">▤　粘贴歌词</button>
+      <button class="tool" id="importAudio">♫　导入音频</button>
+      <button class="tool" id="exportJson">⇩　导出 JSON</button>
+      <button class="tool" id="exportSrt">⇩　导出 SRT</button>
+      <button class="tool" id="discardDraft">⌫　清除草稿</button>
+      <button class="tool final" id="markFinal" data-final="false">✓　标记 final</button>
+    </nav>
+    <input class="hidden" id="lyricsFile" type="file" accept=".lrc,.srt,.ass,.txt,text/plain">
+    <input class="hidden" id="audioFile" type="file" accept="audio/*">
+  </header>
+
+  <main class="workspace">
+    <section class="editor" aria-label="歌词时间轴">
+      <div class="meta">
+        <label>歌曲标题<input id="title" value="未命名歌词时间轴" aria-label="歌曲标题"></label>
+        <div class="meta-stat" id="lineStat">尚未导入歌词</div>
+      </div>
+      <section class="paste-panel" id="pastePanel" aria-label="粘贴纯歌词">
+        <strong>粘贴纯歌词</strong>
+        <textarea id="plainLyrics" placeholder="每行一条歌词。导入后填写入场与出场时间。"></textarea>
+        <div><button class="button primary" id="createPlain">创建草稿时间轴</button></div>
+      </section>
+      <section class="empty" id="emptyState">
+        <div>
+          <h1>从歌词时间开始</h1>
+          <p>导入 LRC、SRT、ASS，或粘贴纯歌词。添加本地音频后，播放会自动高亮当前字幕行。</p>
+          <div class="empty-actions"><button class="button primary" id="emptyImport">导入歌词文件</button><button class="button" id="emptyPaste">粘贴纯歌词</button></div>
+        </div>
+      </section>
+      <div id="tableArea" class="hidden">
+        <div class="table-shell">
+          <table>
+            <thead><tr><th>#</th><th>歌词文本（双击可编辑）</th><th>入场秒数</th><th>出场秒数</th><th>时长</th><th>操作</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="bottom-actions">
+          <button class="button primary" id="addLine">＋ 添加歌词行</button>
+          <button class="button" id="normalize">整理顺序</button>
+          <button class="button danger" id="clearAll">清空全部</button>
+          <span class="hint">时间：± 每次 0.1 秒，方向键 0.1 秒，Shift + 方向键 1 秒</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="预览和校验">
+      <section>
+        <h2>预览播放器</h2>
+        <div class="audio-name"><span id="audioName">尚未导入音频</span><span id="audioDuration">—</span></div>
+        <audio id="audio" controls preload="metadata"></audio>
+        <input class="progress" id="progress" type="range" min="0" max="1" value="0" step="0.01" aria-label="播放位置">
+      </section>
+      <section>
+        <h2>当前歌词预览</h2>
+        <div class="preview"><div class="lyric" id="previewText">导入歌词后显示预览</div><div class="timing" id="previewTime">—</div></div>
+      </section>
+      <section>
+        <div class="validation-head"><h2>校验结果</h2><span class="validation-count" id="validationCount">等待输入</span></div>
+        <div class="issues" id="issues"></div>
+      </section>
+      <section>
+        <h2>时间轴设置</h2>
+        <div class="settings">
+          <label>片段起点（秒）<input id="sourceStart" type="number" min="0" step="0.001" value="0"></label>
+          <label>总时长（秒）<input id="duration" type="number" min="0" step="0.001" value="0"></label>
+        </div>
+      </section>
+    </aside>
+  </main>
+  <footer class="status"><span class="ready" id="statusReady">● 就绪</span><span id="statusAudio">音频：未导入</span><span id="statusLines">歌词行数：0</span><span class="status-right" id="statusValidation">校验：等待输入</span></footer>
+
+  <script type="module">
+    import * as Core from '../scripts/timeline-editor-core.mjs';
+
+    const $ = (selector) => document.querySelector(selector);
+    const elements = {
+      audio:$('#audio'), audioFile:$('#audioFile'), lyricsFile:$('#lyricsFile'), title:$('#title'), sourceStart:$('#sourceStart'), duration:$('#duration'),
+      rows:$('#rows'), tableArea:$('#tableArea'), emptyState:$('#emptyState'), lineStat:$('#lineStat'), audioName:$('#audioName'), audioDuration:$('#audioDuration'),
+      progress:$('#progress'), previewText:$('#previewText'), previewTime:$('#previewTime'), issues:$('#issues'), validationCount:$('#validationCount'),
+      markFinal:$('#markFinal'), statusReady:$('#statusReady'), statusAudio:$('#statusAudio'), statusLines:$('#statusLines'), statusValidation:$('#statusValidation'), pastePanel:$('#pastePanel'), plainLyrics:$('#plainLyrics')
+    };
+    const draftKey = 'cimu.timeline-editor.v1';
+    let timeline = null;
+    let audioUrl = null;
+    let sourceFileName = null;
+    let lastDraft = null;
+
+    function round(value) { return Number(Number(value).toFixed(3)); }
+    function currentLineIndex() { const time = elements.audio.currentTime || 0; return (timeline?.lines ?? []).findIndex((line) => time >= line.start && time < line.end); }
+    function lineForTime() { const index = currentLineIndex(); return index >= 0 ? timeline.lines[index] : null; }
+    function resetGroups(line) { return Core.withGroups({...line, groups:[line.text], groupStarts:null}); }
+    function normalizeTimeline() {
+      if (!timeline) return;
+      timeline.title = elements.title.value.trim() || '未命名歌词时间轴';
+      timeline.sourceStartSeconds = Math.max(0, Number(elements.sourceStart.value) || 0);
+      timeline.durationSeconds = Math.max(0, Number(elements.duration.value) || 0);
+      timeline.lines = timeline.lines.map((line) => resetGroups(line));
+    }
+    function saveDraft() {
+      if (!timeline?.lines?.length) return;
+      try {
+        const payload = {schemaVersion:1, timeline, sourceFileName, audioName:elements.audioName.textContent};
+        const fingerprint = JSON.stringify(payload);
+        if (fingerprint === lastDraft) return;
+        localStorage.setItem(draftKey, JSON.stringify({...payload, savedAt:new Date().toISOString()}));
+        lastDraft = fingerprint;
+      } catch (error) { console.warn('Could not save local lyric draft.', error); }
+    }
+    function restoreDraft() {
+      try {
+        const draft = JSON.parse(localStorage.getItem(draftKey) ?? 'null');
+        if (draft?.schemaVersion !== 1 || !draft.timeline?.lines?.length) return false;
+        timeline = draft.timeline;
+        sourceFileName = draft.sourceFileName ?? null;
+        elements.title.value = timeline.title ?? '未命名歌词时间轴';
+        elements.audioName.textContent = draft.audioName && draft.audioName !== '尚未导入音频' ? `${draft.audioName}（请重新选择本地音频）` : '尚未导入音频';
+        elements.statusReady.textContent = '● 已恢复本地草稿';
+        lastDraft = JSON.stringify({schemaVersion:1, timeline, sourceFileName, audioName:draft.audioName});
+        return true;
+      } catch { return false; }
+    }
+    function discardDraft() { localStorage.removeItem(draftKey); lastDraft = null; }
+    function issuesForLine(report, index) { return [...report.errors, ...report.warnings].some((issue) => issue.line === index); }
+    function updatePreview() {
+      const line = lineForTime();
+      elements.previewText.textContent = line?.text || (timeline ? '当前没有激活歌词' : '导入歌词后显示预览');
+      elements.previewTime.textContent = line ? `${Core.formatClock(line.start)}  —  ${Core.formatClock(line.end)}` : '—';
+      const max = Number(elements.audio.duration) || Number(timeline?.durationSeconds) || 1;
+      elements.progress.max = max;
+      elements.progress.value = Math.min(max, elements.audio.currentTime || 0);
+    }
+    function render() {
+      const hasLines = Boolean(timeline?.lines?.length);
+      elements.tableArea.classList.toggle('hidden', !hasLines);
+      elements.emptyState.classList.toggle('hidden', hasLines);
+      const report = timeline ? Core.validateTimeline(timeline) : {errors:[],warnings:[],passed:false};
+      if (hasLines) {
+        elements.rows.replaceChildren(...timeline.lines.map((line, index) => rowElement(line, index, report)));
+        elements.lineStat.textContent = `共 ${timeline.lines.length} 行歌词　｜　片段 ${Core.formatClock(timeline.durationSeconds)}`;
+      } else elements.lineStat.textContent = '尚未导入歌词';
+      renderValidation(report);
+      elements.duration.value = timeline?.durationSeconds ?? 0;
+      elements.sourceStart.value = timeline?.sourceStartSeconds ?? 0;
+      const isFinal = Boolean(timeline && !timeline.review?.required);
+      elements.markFinal.dataset.final = String(isFinal);
+      elements.markFinal.textContent = isFinal ? '✓　已标记 final' : '✓　标记 final';
+      elements.statusLines.textContent = `歌词行数：${timeline?.lines.length ?? 0}`;
+      elements.statusValidation.textContent = timeline ? `校验：${report.errors.length} 错误 / ${report.warnings.length} 警告` : '校验：等待输入';
+      updatePreview();
+      saveDraft();
+    }
+    function rowElement(line, index, report) {
+      const row = document.createElement('tr');
+      if (index === currentLineIndex()) row.classList.add('active');
+      if (issuesForLine(report, index)) row.classList.add('invalid');
+      const timeControl = (field, label) => `<div class="time-control"><button class="time-step" type="button" title="${label}减少 0.1 秒" aria-label="${label}减少 0.1 秒" data-time-delta="-0.1" data-field="${field}" data-index="${index}">−</button><input class="time-input" data-field="${field}" data-index="${index}" value="${line[field]}" aria-label="第 ${index + 1} 行${label}"><button class="time-step" type="button" title="${label}增加 0.1 秒" aria-label="${label}增加 0.1 秒" data-time-delta="0.1" data-field="${field}" data-index="${index}">+</button></div>`;
+      row.innerHTML = `<td class="row-num">${index + 1}</td><td><textarea class="lyric-input" data-field="text" data-index="${index}" aria-label="第 ${index + 1} 行歌词">${escapeHtml(line.text)}</textarea></td><td>${timeControl('start', '入场时间')}</td><td>${timeControl('end', '出场时间')}</td><td class="duration">${Number.isFinite(line.end - line.start) ? `${(line.end - line.start).toFixed(3)} s` : '—'}</td><td class="row-actions"><button title="上移" data-action="up" data-index="${index}">↑</button><button title="下移" data-action="down" data-index="${index}">↓</button><button title="拆分" data-action="split" data-index="${index}">÷</button><button title="与下一行合并" data-action="merge" data-index="${index}">⇱</button><button class="danger" title="删除" data-action="delete" data-index="${index}">×</button></td>`;
+      return row;
+    }
+    function escapeHtml(value) { const node = document.createElement('textarea'); node.textContent = value ?? ''; return node.innerHTML; }
+    function renderValidation(report) {
+      const all = [...report.errors.map((issue) => ({...issue,severity:'error'})), ...report.warnings.map((issue) => ({...issue,severity:'warning'}))];
+      elements.validationCount.textContent = timeline ? (all.length ? `发现 ${all.length} 个问题` : '校验通过') : '等待输入';
+      elements.validationCount.classList.toggle('bad', all.some((issue) => issue.severity === 'error'));
+      const display = all.length ? all : (timeline ? [{severity:'ok',message:'时间轴可用于预览渲染。'}] : []);
+      elements.issues.replaceChildren(...display.map((issue) => {
+        const button = document.createElement('button'); button.className = `issue ${issue.severity}`; button.type = 'button';
+        const icon = issue.severity === 'error' ? '▲' : issue.severity === 'warning' ? '●' : '✓';
+        button.innerHTML = `<span class="severity">${icon}</span><span><strong>${issue.message}</strong><span>${issue.code ? `规则：${issue.code}` : '可以继续编辑或导出。'}</span></span>`;
+        if (Number.isInteger(issue.line)) button.addEventListener('click', () => document.querySelector(`[data-index="${issue.line}"]`)?.focus());
+        return button;
+      }));
+    }
+    function importContents(contents, fileName, forcedFormat = null) {
+      const format = forcedFormat ?? Core.inferFormat(fileName, contents);
+      const title = fileName ? fileName.replace(/\.[^.]+$/, '') : '未命名歌词时间轴';
+      const audioDuration = Number.isFinite(elements.audio.duration) ? elements.audio.duration : null;
+      try {
+        timeline = Core.buildTimeline({contents, format, title, sourceName:fileName ?? null, durationSeconds:audioDuration});
+        timeline.review = {required:true, reason:'请在本地时间轴编辑器中完成核对后标记 final。'};
+        sourceFileName = fileName ?? null;
+        elements.title.value = timeline.title;
+        elements.pastePanel.classList.remove('open');
+        render();
+      } catch (error) { window.alert(error.message); }
+    }
+    function mutateLine(index, patch) {
+      const old = timeline.lines[index]; if (!old) return;
+      const next = {...old, ...patch};
+      timeline.lines[index] = resetGroups(next);
+      render();
+    }
+    function splitLine(index) {
+      const line = timeline.lines[index]; if (!line) return;
+      const text = line.text.trim();
+      const points = [...text.matchAll(/[，。！？、,.!?；;\s]+/g)].map((match) => match.index + match[0].length).filter((point) => point > 0 && point < text.length);
+      const cut = points.at(Math.floor(points.length / 2)) ?? Math.ceil(text.length / 2);
+      const left = text.slice(0, cut).trim(), right = text.slice(cut).trim();
+      if (!left || !right) return window.alert('这一行没有可安全拆分的位置，请先编辑文字或手动新增一行。');
+      const middle = round((Number(line.start) + Number(line.end)) / 2);
+      timeline.lines.splice(index, 1, resetGroups({...line,text:left,end:middle}), resetGroups({...line,text:right,start:middle}));
+      render();
+    }
+    function mergeLine(index) {
+      const first = timeline.lines[index], second = timeline.lines[index + 1];
+      if (!first || !second) return;
+      timeline.lines.splice(index, 2, resetGroups({...first,end:second.end,text:`${first.text} ${second.text}`.trim()}));
+      render();
+    }
+    function addLine(after = timeline?.lines.length - 1) {
+      if (!timeline) return;
+      const previous = timeline.lines[Math.max(0, after)] ?? {end:0};
+      const start = round(Number(previous.end) || 0), end = round(Math.min(Number(timeline.durationSeconds) || start + 3, start + 3));
+      timeline.lines.splice(after + 1, 0, resetGroups({start,end:Math.max(end, start + Core.MIN_LINE_DURATION_SECONDS),text:'新歌词'}));
+      render();
+    }
+    function handleAction(action, index) {
+      if (!timeline) return;
+      if (action === 'up' && index > 0) [timeline.lines[index - 1], timeline.lines[index]] = [timeline.lines[index], timeline.lines[index - 1]];
+      if (action === 'down' && index < timeline.lines.length - 1) [timeline.lines[index], timeline.lines[index + 1]] = [timeline.lines[index + 1], timeline.lines[index]];
+      if (action === 'split') return splitLine(index);
+      if (action === 'merge') return mergeLine(index);
+      if (action === 'delete') timeline.lines.splice(index, 1);
+      render();
+    }
+    function download(name, contents, type) { const blob = new Blob([contents],{type}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
+    function reviewedTimeline() {
+      normalizeTimeline();
+      return {...timeline, title:elements.title.value.trim() || '未命名歌词时间轴', lyricSource:{...timeline.lyricSource,path:sourceFileName}, editor:{kind:'local-timeline-editor', exportedAt:new Date().toISOString()}, lines:timeline.lines.map((line) => resetGroups(line))};
+    }
+
+    $('#importLyrics').addEventListener('click', () => elements.lyricsFile.click()); $('#emptyImport').addEventListener('click', () => elements.lyricsFile.click());
+    $('#importAudio').addEventListener('click', () => elements.audioFile.click()); $('#pasteLyrics').addEventListener('click', () => elements.pastePanel.classList.toggle('open')); $('#emptyPaste').addEventListener('click', () => elements.pastePanel.classList.add('open'));
+    elements.lyricsFile.addEventListener('change', async () => { const file = elements.lyricsFile.files?.[0]; if (file) importContents(await file.text(), file.name); elements.lyricsFile.value = ''; });
+    elements.audioFile.addEventListener('change', () => { const file = elements.audioFile.files?.[0]; if (!file) return; if (audioUrl) URL.revokeObjectURL(audioUrl); audioUrl = URL.createObjectURL(file); elements.audio.src = audioUrl; elements.audioName.textContent = file.name; elements.statusAudio.textContent = `音频：${file.name}`; });
+    elements.audio.addEventListener('loadedmetadata', () => { const duration = round(elements.audio.duration); elements.audioDuration.textContent = Core.formatClock(duration); if (timeline) { const oldDuration = timeline.durationSeconds; timeline.durationSeconds = duration; if (timeline.lines.at(-1)?.end === oldDuration) timeline.lines.at(-1).end = duration; render(); } });
+    elements.audio.addEventListener('timeupdate', render); elements.progress.addEventListener('input', () => { elements.audio.currentTime = Number(elements.progress.value); updatePreview(); render(); });
+    $('#createPlain').addEventListener('click', () => importContents(elements.plainLyrics.value, 'pasted-lyrics.txt', 'plain-text'));
+    elements.rows.addEventListener('change', (event) => { const input = event.target.closest('[data-field]'); if (!input || !timeline) return; const index = Number(input.dataset.index); const field = input.dataset.field; const value = field === 'text' ? input.value : Core.parseTime(input.value); mutateLine(index, {[field]: field === 'text' ? value : round(value)}); });
+    elements.rows.addEventListener('click', (event) => { const step = event.target.closest('[data-time-delta]'); if (step && timeline) { const index = Number(step.dataset.index), field = step.dataset.field; const current = Number(timeline.lines[index]?.[field]); if (Number.isFinite(current)) mutateLine(index, {[field]:round(Math.max(0, current + Number(step.dataset.timeDelta)))}); return; } const button = event.target.closest('[data-action]'); if (button) handleAction(button.dataset.action, Number(button.dataset.index)); });
+    elements.rows.addEventListener('keydown', (event) => { const input = event.target.closest('.time-input'); if (!input || !timeline || !['ArrowUp','ArrowDown'].includes(event.key)) return; const index = Number(input.dataset.index), field = input.dataset.field, current = Number(timeline.lines[index]?.[field]); if (!Number.isFinite(current)) return; event.preventDefault(); const amount = event.shiftKey ? 1 : .1; mutateLine(index, {[field]:round(Math.max(0, current + (event.key === 'ArrowUp' ? amount : -amount)))}); });
+    elements.title.addEventListener('change', () => { if (timeline) { timeline.title = elements.title.value; render(); } });
+    elements.sourceStart.addEventListener('change', () => { if (timeline) { timeline.sourceStartSeconds = Math.max(0, Number(elements.sourceStart.value) || 0); render(); } });
+    elements.duration.addEventListener('change', () => { if (timeline) { timeline.durationSeconds = Math.max(0, Number(elements.duration.value) || 0); render(); } });
+    $('#addLine').addEventListener('click', () => addLine());
+    $('#normalize').addEventListener('click', () => { if (!timeline) return; timeline.lines.sort((a,b) => a.start - b.start); render(); });
+    $('#clearAll').addEventListener('click', () => { if (timeline && window.confirm('清空当前时间轴中的全部歌词行与本地草稿？')) { timeline = null; sourceFileName = null; discardDraft(); render(); } });
+    $('#discardDraft').addEventListener('click', () => { if (window.confirm('清除本地自动保存的歌词草稿？当前已导入的表格不会立即关闭。')) { discardDraft(); elements.statusReady.textContent = '● 本地草稿已清除'; } });
+    elements.markFinal.addEventListener('click', () => { if (!timeline) return window.alert('请先导入歌词。'); timeline.review = timeline.review?.required ? {required:false, reason:'已在本地时间轴编辑器中标记 final。'} : {required:true, reason:'已取消 final 标记，请继续复核时间轴。'}; render(); });
+    $('#exportJson').addEventListener('click', () => { if (!timeline) return window.alert('请先导入歌词。'); const value = reviewedTimeline(); download(`${safeFileName(value.title)}.reviewed.json`, JSON.stringify(value,null,2), 'application/json'); render(); });
+    $('#exportSrt').addEventListener('click', () => { if (!timeline) return window.alert('请先导入歌词。'); normalizeTimeline(); download(`${safeFileName(timeline.title)}.srt`, Core.exportSrt(timeline), 'text/plain;charset=utf-8'); render(); });
+    function safeFileName(value) { return String(value || 'lyrics').replace(/[\\/:*?"<>|]/g, '-'); }
+    restoreDraft();
+    window.addEventListener('beforeunload', saveDraft);
+    render();
+  </script>
+</body>
+</html>

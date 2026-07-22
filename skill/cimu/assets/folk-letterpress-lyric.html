@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Lyric MV · Folk Letterpress</title>
+    <style>
+      @font-face { font-family:'MV Ma Shan Zheng'; src:url('../fonts/ballad-mashanzheng/MaShanZheng-Regular.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family:'MV ZhanKu Literary'; src:url('../fonts/zhankuwenyi/站酷文艺体.ttf') format('truetype'); font-display:block; }
+      html, body, canvas { width:100%; height:100%; margin:0; overflow:hidden; background:#E5DDC8; }
+      canvas, img { display:block; } img { display:none; }
+    </style>
+  </head>
+  <body>
+    <img id="cover" alt="" />
+    <canvas id="stage"></canvas>
+    <script>
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d', {alpha:false});
+      const cover = document.getElementById('cover');
+      window.__LYRICS = window.__LYRICS || [];
+      window.__TIMELINE_META = window.__TIMELINE_META || {};
+      const DEEP='#111A18', INK='#D9E9DA', MOSS='#82B89A', CLAY='#FF8C5A', SUN='#FFD36B', IVORY='#FFF5E3', LILAC='#D8B8FF';
+      const clamp=(v)=>Math.max(0,Math.min(1,v));
+      const ease=(v)=>1-Math.pow(1-clamp(v),3);
+      const hash=(v)=>{const n=Math.sin(v*19.31)*48957.73; return n-Math.floor(n);};
+      function resize(){const r=devicePixelRatio||1; canvas.width=Math.round(innerWidth*r); canvas.height=Math.round(innerHeight*r);}
+      function font(size, brush=false, align='left'){ctx.font=`${brush?'400':'600'} ${size}px ${brush?'"MV Ma Shan Zheng"':'"MV ZhanKu Literary"'}, serif`;ctx.textAlign=align;ctx.textBaseline='middle';}
+      function fit(text,max,base,brush=false){let size=base;font(size,brush);while(ctx.measureText(text).width>max&&size>42){size-=3;font(size,brush);}return size;}
+      function text(value,x,y,opt={}){const {size=120,color=INK,alpha=1,blur=0,rotation=0,brush=false,scale=1,shadow=true,align='left',glow=0,shadowBlur=6,shadowOffsetY=3}=opt;ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(scale,scale);font(size,brush,align);ctx.filter=blur?`blur(${blur}px)`:'none';if(shadow){ctx.shadowColor='rgba(4,8,7,.62)';ctx.shadowBlur=shadowBlur;ctx.shadowOffsetY=shadowOffsetY;}if(glow){ctx.shadowColor=color;ctx.shadowBlur=glow;}ctx.fillStyle=color;ctx.fillText(value,0,0);ctx.restore();}
+      function line(x1,y1,x2,y2,color,alpha,width=2){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();}
+      function coverDraw(x,y,w,h,alpha,blur){if(!cover.complete||!cover.naturalWidth)return;const scale=Math.max(w/cover.naturalWidth,h/cover.naturalHeight),sw=w/scale,sh=h/scale;ctx.save();ctx.globalAlpha=alpha;ctx.filter=blur?`blur(${blur}px)`:'none';ctx.drawImage(cover,(cover.naturalWidth-sw)/2,(cover.naturalHeight-sh)/2,sw,sh,x,y,w,h);ctx.restore();}
+      window.loadTimelineAssets=(meta)=>{if(!meta.cover)return Promise.resolve();return new Promise((done)=>{cover.addEventListener('load',done,{once:true});cover.addEventListener('error',done,{once:true});cover.src=meta.cover;});};
+      function audioAt(time){const a=window.__TIMELINE_META.audioData;if(!a?.frames?.length)return {rms:.3,bass:.3,mid:.3,treble:.3};return a.frames[Math.min(a.frames.length-1,Math.max(0,Math.round(time*a.fps)))];}
+      function groupStarts(line){if(line.groupStarts?.length===line.groups?.length)return line.groupStarts;const groups=line.groups?.length?line.groups:[line.text];const span=Math.min((line.end-line.start)*.54,groups.length*.45);return groups.map((_,i)=>line.start+.14+i*span/Math.max(1,groups.length-1));}
+      function world(time,H){ctx.fillStyle=DEEP;ctx.fillRect(0,0,1920,H);coverDraw(-100+Math.sin(time*.075)*24,-56,2120,H+112,.88,20);const wash=ctx.createLinearGradient(0,0,1920,H);wash.addColorStop(0,'rgba(8,19,18,.72)');wash.addColorStop(.48,'rgba(27,36,27,.42)');wash.addColorStop(1,'rgba(36,16,20,.64)');ctx.fillStyle=wash;ctx.fillRect(0,0,1920,H);const bloom=ctx.createRadialGradient(1330,H*.28,0,1330,H*.28,700);bloom.addColorStop(0,'rgba(255,179,101,.18)');bloom.addColorStop(1,'rgba(255,179,101,0)');ctx.fillStyle=bloom;ctx.fillRect(0,0,1920,H);for(let i=0;i<420;i+=1){const x=hash(i)*1920,y=hash(i*7)*H;ctx.fillStyle=i%11?'rgba(255,245,227,.035)':'rgba(255,140,90,.08)';ctx.fillRect(x,y,1+hash(i*3)*3,1+hash(i*5)*2);}const a=audioAt(time);ctx.save();ctx.globalAlpha=.22+a.mid*.14;ctx.strokeStyle=MOSS;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-80,H*.78);ctx.bezierCurveTo(280,H*.54,520,H*.92,880,H*.70);ctx.bezierCurveTo(1240,H*.48,1530,H*.84,2020,H*.58);ctx.stroke();ctx.restore();line(84,H*.15,560,H*.15,CLAY,.58,3);line(1350,H*.85,1836,H*.85,MOSS,.48,3);text(window.__TIMELINE_META.title?.split('//')[0]?.trim()||'民谣',86,92,{size:28,color:IVORY,alpha:.78,shadow:false});text('FIELD NOTES  /  LYRIC STUDY',86,H-70,{size:19,color:MOSS,alpha:.72,shadow:false});}
+      function lyricTone(){return window.__TIMELINE_META.folkPalette?.lyric||'#EEE2D3';}
+      function paperFray(line,word,pos,size,alpha){const width=Math.min(pos.max,size*Math.max(2,word.length)*.72);ctx.save();ctx.globalAlpha=alpha*.24;ctx.fillStyle=lyricTone();for(let i=0;i<16;i+=1){const seed=(line.index+1)*137+(word.length+3)*i;const offset=(hash(seed)-.5)*width;const y=(hash(seed*3)-.5)*size*.78;const x=pos.x+(pos.align==='right'?-1:1)*offset;ctx.fillRect(x,y+pos.y,2+hash(seed*5)*8,1+hash(seed*7)*2);}ctx.restore();}
+      function sentenceLayout(groups,line,H){const size=groups.length>2?104:124;const widths=groups.map((word)=>{font(size,false);return ctx.measureText(word).width;});const gap=groups.length===2?42:30;const total=widths.reduce((sum,width)=>sum+width,0)+gap*Math.max(0,groups.length-1);const y=[H*.49,H*.45,H*.55,H*.50][line.index%4];if(total<=1510){const x=line.index%3===0?220:(1920-total)/2;let cursor=x;return groups.map((word,index)=>{const item={x:cursor,y,align:'left',max:widths[index],size};cursor+=widths[index]+gap;return item;});}const x=line.index%2?340:250;return groups.map((word,index)=>({x,y:H*(.39+index*.19),align:'left',max:1420,size:index===0?size:size*.92}));}
+      function scene(active,time,H){const groups=active.groups?.length?active.groups:[active.text];const starts=groupStarts(active);const positions=sentenceLayout(groups,active,H);const endFade=clamp((time-(active.end-.96))/.96);groups.forEach((word,index)=>{const enter=Math.sin(clamp((time-starts[index])/1.18)*Math.PI*.5);const pos=positions[index]||positions.at(-1);const size=fit(word,pos.max,pos.size,false);const alpha=enter*(1-Math.sin(endFade*Math.PI*.5));const slide=(1-enter)*12;const color=lyricTone();text(word,pos.x+slide,pos.y,{size,color,alpha,blur:(1-enter)*1.5,rotation:0,brush:false,align:pos.align,glow:0,shadowBlur:6,shadowOffsetY:3,scale:1});if(enter>.22)paperFray(active,word,pos,size,alpha);});}
+      function renderAt(time){const W=canvas.width,H=canvas.height,u=W/1920,logicalH=H/u;ctx.setTransform(1,0,0,1,0,0);ctx.scale(u,u);world(time,logicalH);const active=window.__LYRICS.find((line)=>time>=line.start&&time<line.end);if(active)scene(active,time,logicalH);}
+      window.renderAt=renderAt;addEventListener('resize',()=>{resize();renderAt(0);});resize();renderAt(0);
+    </script>
+  </body>
+</html>

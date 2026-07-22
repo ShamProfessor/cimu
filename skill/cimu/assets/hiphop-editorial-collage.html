@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cimu · Editorial Collage</title>
+    <style>
+      @font-face { font-family: 'MV YouShe'; src: url('../fonts/youshetitle/优设标题黑.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV QingKe'; src: url('../fonts/hiphop-qingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf') format('truetype'); font-display:block; }
+      html, body, canvas { width:100%; height:100%; margin:0; overflow:hidden; background:#171310; }
+      canvas, img { display:block; } img { display:none; }
+    </style>
+  </head>
+  <body>
+    <img id="plate" src="backgrounds/rap-editorial-collage-v1.png" alt="" />
+    <canvas id="stage"></canvas>
+    <script>
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d', {alpha:false});
+      const plate = document.getElementById('plate');
+      window.__LYRICS = window.__LYRICS || [];
+      window.__TIMELINE_META = window.__TIMELINE_META || {};
+      const clamp = (value) => Math.max(0, Math.min(1, value));
+      const ease = (value) => 1 - Math.pow(1 - clamp(value), 4);
+      const hash = (value) => { const n = Math.sin(value * 91.173) * 43758.5453; return n - Math.floor(n); };
+      const colors = {ink:'#171310', paper:'#F2E7D4', bone:'#C9B590', brick:'#B7462F', amber:'#D88B2B', shadow:'#090706'};
+
+      function resize() { const dpr = devicePixelRatio || 1; canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(innerHeight * dpr); }
+      function font(size, display = false) { ctx.font = `${display ? 400 : 700} ${size}px ${display ? '"MV QingKe", "Hiragino Sans GB", sans-serif' : '"MV YouShe", "Hiragino Sans GB", sans-serif'}`; ctx.textBaseline = 'middle'; }
+      function rect(x, y, w, h, fill, alpha = 1, rotation = 0) { ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation); ctx.fillStyle = fill; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore(); }
+      function drawPlate(x, y, w, h, alpha = 1, zoom = 1, sxBias = .5, syBias = .5) {
+        if (!plate.complete || !plate.naturalWidth) return;
+        const scale = Math.max(w / plate.naturalWidth, h / plate.naturalHeight) * zoom;
+        const sw = w / scale, sh = h / scale;
+        const sx = Math.max(0, Math.min(plate.naturalWidth - sw, (plate.naturalWidth - sw) * sxBias));
+        const sy = Math.max(0, Math.min(plate.naturalHeight - sh, (plate.naturalHeight - sh) * syBias));
+        ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(plate, sx, sy, sw, sh, x, y, w, h); ctx.restore();
+      }
+      function cropCard(index, time, H) {
+        const depth = .18 + hash(index * 3) * .68;
+        const w = 180 + hash(index * 7) * 290, h = 120 + hash(index * 11) * 240;
+        const x = 1180 + hash(index * 13) * 680 + Math.sin(time * (.17 + depth * .18) + index) * (22 + depth * 38);
+        const y = 60 + hash(index * 17) * (H - h - 80) + Math.cos(time * (.13 + depth * .13) + index) * (8 + depth * 20);
+        const rotation = (hash(index * 19) - .5) * .24 + Math.sin(time * .12 + index) * .012;
+        ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation);
+        ctx.globalAlpha = .08 + depth * .19; ctx.shadowColor = '#080604'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 16;
+        ctx.drawImage(plate, plate.naturalWidth * (.42 + hash(index) * .35), plate.naturalHeight * hash(index * 2) * .5, plate.naturalWidth * .36, plate.naturalHeight * .42, -w / 2, -h / 2, w, h);
+        ctx.globalAlpha = .22 + depth * .25; ctx.strokeStyle = index % 2 ? colors.bone : colors.brick; ctx.lineWidth = 3; ctx.strokeRect(-w / 2, -h / 2, w, h);
+        ctx.restore();
+      }
+      function drawPaper(time, H) {
+        for (let i = 0; i < 15; i += 1) {
+          const depth = .2 + hash(i * 9) * .8;
+          const w = 70 + hash(i * 3) * 240, h = 12 + hash(i * 4) * 54;
+          const x = 970 + hash(i * 6) * 1080 - time * (8 + depth * 22);
+          const y = H * (.08 + hash(i * 5) * .86) + Math.sin(time * (.25 + depth * .4) + i) * (4 + depth * 14);
+          rect(x, y, w, h, i % 3 === 0 ? colors.brick : i % 3 === 1 ? colors.bone : colors.amber, .10 + depth * .17, (hash(i * 8) - .5) * .25);
+        }
+      }
+      function drawGrain(time, H) {
+        for (let i = 0; i < 280; i += 1) {
+          const x = hash(i * 17.1) * 1920, y = hash(i * 43.7) * H;
+          const pulse = .45 + .55 * Math.sin(time * (1.8 + hash(i) * 2) + i);
+          rect(x, y, 1 + hash(i * 2) * 3, 1 + hash(i * 5) * 3, i % 6 ? colors.paper : colors.brick, (.025 + hash(i * 8) * .06) * pulse);
+        }
+      }
+      function world(time, H) {
+        ctx.fillStyle = colors.ink; ctx.fillRect(0, 0, 1920, H);
+        drawPlate(-46 - Math.sin(time * .11) * 28, -28, 2015, H + 70, .84, 1.035, .62, .5);
+        const veil = ctx.createLinearGradient(0, 0, 1920, 0);
+        veil.addColorStop(0, 'rgba(17,13,10,.95)'); veil.addColorStop(.43, 'rgba(17,13,10,.86)'); veil.addColorStop(.67, 'rgba(17,13,10,.28)'); veil.addColorStop(1, 'rgba(17,13,10,.08)');
+        ctx.fillStyle = veil; ctx.fillRect(0, 0, 1920, H);
+        for (let i = 0; i < 7; i += 1) cropCard(i, time, H);
+        drawPaper(time, H); drawGrain(time, H);
+        rect(0, H * .80, 930, 10, colors.brick, .22 + Math.sin(time * 2.4) * .05, -.025);
+        rect(0, H * .17, 520, 4, colors.bone, .18, 0);
+        font(26); ctx.fillStyle = colors.bone; ctx.globalAlpha = .72; ctx.fillText(window.__TIMELINE_META.title?.split('//')[0]?.trim() || 'RAP STUDY', 92, 84); ctx.globalAlpha = 1;
+        font(18); ctx.fillStyle = colors.bone; ctx.globalAlpha = .46; ctx.fillText('EDITORIAL COLLAGE / LIVE TAKE', 92, H - 58); ctx.globalAlpha = 1;
+      }
+      function groupStarts(line) {
+        if (line.groupStarts?.length === line.groups?.length) return line.groupStarts;
+        const groups = line.groups?.length ? line.groups : [line.text];
+        return groups.map((_, index) => line.start + .08 + index * .28);
+      }
+      function drawLyric(word, index, start, time, H, role) {
+        if (!word || time < start) return;
+        const p = ease((time - start) / .26);
+        const y = [H * .38, H * .56, H * .71][Math.min(index, 2)];
+        const x = [112, 290, 148][Math.min(index, 2)];
+        const hero = role === 'hook' || role === 'punchline' || role === 'declaration';
+        let size = hero && index === 0 ? 194 : index === 1 ? 152 : 174;
+        font(size); while (ctx.measureText(word).width > 930 && size > 58) { size -= 4; font(size); }
+        const drift = (1 - p) * (index % 2 ? 118 : -118);
+        rect(x - 32, y - size * .56, Math.min(1020, ctx.measureText(word).width + 74), size * 1.08, colors.shadow, .48 * p, index % 2 ? .018 : -.018);
+        ctx.save(); ctx.translate(x + drift, y); ctx.rotate(index % 2 ? .018 : -.018); ctx.globalAlpha = p * .55; ctx.fillStyle = colors.brick; font(size); ctx.fillText(word, 15, 10); ctx.restore();
+        ctx.save(); ctx.translate(x + drift, y); ctx.rotate(index % 2 ? .018 : -.018); ctx.globalAlpha = p; ctx.shadowColor = '#080604'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; ctx.fillStyle = index === 1 ? colors.amber : colors.paper; font(size); ctx.fillText(word, 0, 0); ctx.restore();
+        if (hero && p > .4) { rect(x - 66, y + size * .64, 220 + Math.sin(time * 4) * 44, 14, colors.brick, .54 * p, -.04); }
+      }
+      function drawHookDepth(line, time, H) {
+        const hero = line.role === 'hook' || line.role === 'punchline' || line.role === 'declaration';
+        if (!hero || !plate.complete || !plate.naturalWidth) return;
+        const local = time - line.start;
+        const attack = ease(local / .24), settle = clamp((line.end - time) / .20);
+        const intensity = attack * Math.min(1, settle * 4);
+        const focal = 1240;
+        ctx.save();
+        for (let i = 0; i < 19; i += 1) {
+          const seed = i + line.index * 37;
+          const depth = -180 + hash(seed * 3) * 1420 - local * (250 + hash(seed * 5) * 610);
+          if (depth < -520 || depth > 1380) continue;
+          const scale = focal / (focal + depth);
+          const xWorld = 1230 + (hash(seed * 7) - .5) * 980;
+          const yWorld = H * (.48 + (hash(seed * 11) - .5) * .76);
+          const x = 960 + (xWorld - 960) * scale;
+          const y = H * .52 + (yWorld - H * .52) * scale;
+          const w = (110 + hash(seed * 13) * 260) * scale;
+          const h = (34 + hash(seed * 17) * 145) * scale;
+          const rotation = (hash(seed * 19) - .5) * .64 + local * (hash(seed * 23) - .5) * .85;
+          const alpha = intensity * (.06 + (1 - clamp(depth / 1500)) * .23);
+          ctx.save(); ctx.translate(x, y); ctx.rotate(rotation); ctx.globalAlpha = alpha;
+          ctx.shadowColor = '#080604'; ctx.shadowBlur = 22 * scale; ctx.shadowOffsetY = 10 * scale;
+          ctx.drawImage(plate, plate.naturalWidth * (.48 + hash(seed) * .28), plate.naturalHeight * hash(seed * 2) * .56, plate.naturalWidth * .24, plate.naturalHeight * .28, -w / 2, -h / 2, w, h);
+          ctx.globalAlpha = alpha * 1.35; ctx.strokeStyle = i % 3 ? colors.bone : colors.brick; ctx.lineWidth = Math.max(1.2, 3 * scale); ctx.strokeRect(-w / 2, -h / 2, w, h);
+          ctx.restore();
+        }
+        ctx.globalAlpha = intensity * .17; ctx.fillStyle = colors.paper; ctx.fillRect(0, H * .16, 1920, 5 + attack * 14);
+        ctx.restore();
+      }
+      function renderAt(time) {
+        const unit = canvas.width / 1920, H = canvas.height / unit;
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(unit, unit); world(time, H);
+        const line = window.__LYRICS.find((entry) => time >= entry.start && time < entry.end); if (!line) return;
+        drawHookDepth(line, time, H);
+        const groups = line.groups?.length ? line.groups.slice(0, 3) : [line.text]; const starts = groupStarts(line);
+        groups.forEach((word, index) => drawLyric(word, index, starts[index] ?? line.start, time, H, line.role || 'verse'));
+      }
+      window.loadTimelineAssets = () => plate.complete ? Promise.resolve() : new Promise((done) => { plate.addEventListener('load', done, {once:true}); plate.addEventListener('error', done, {once:true}); });
+      window.renderAt = renderAt; addEventListener('resize', () => { resize(); renderAt(0); }); resize(); renderAt(0);
+    </script>
+  </body>
+</html>

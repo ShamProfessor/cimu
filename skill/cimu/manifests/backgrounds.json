@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "policy": "The core skill ships procedural plates and references optional asset packs by manifest. Large video, AE, Lottie, and AI-generated assets are never embedded in SKILL.md.",
+  "backgrounds": [
+    {"id":"rap-editorial-collage-v1","kind":"generated-image-plus-canvas","status":"ready","profiles":["rap-editorial","code-collision"],"tags":["rap","street","editorial","screenprint","analog"],"safeZone":"left-center","loopSeconds":8,"license":"project-generated asset; prompt and model record required","path":"assets/backgrounds/rap-editorial-collage-v1.png","template":"hiphop-editorial-collage"},
+    {"id":"procedural-macau-collage","kind":"canvas-svg","status":"ready","profiles":["macau-heritage"],"tags":["heritage","gambling","analog"],"safeZone":"center","loopSeconds":10,"license":"project-code"},
+    {"id":"procedural-memory-cover-film","kind":"canvas","status":"ready","profiles":["pop-memory-release","ballad-editorial"],"tags":["cover","warm","editorial"],"safeZone":"left-center","loopSeconds":12,"license":"project-code"},
+    {"id":"procedural-folk-paper-field","kind":"canvas","status":"ready","profiles":["folk-letterpress"],"tags":["paper","organic","landscape"],"safeZone":"center-right","loopSeconds":12,"license":"project-code"},
+    {"id":"procedural-folk-city-walk","kind":"canvas","status":"ready","profiles":["folk-city-walk"],"tags":["cover","city","night","analog"],"safeZone":"center","loopSeconds":12,"license":"project-code"},
+    {"id":"procedural-market-photocopy","kind":"canvas-svg","status":"ready","profiles":["night-market-copy"],"tags":["street","photocopy","warm"],"safeZone":"center-lower","loopSeconds":8,"license":"project-code","template":"rap-adaptive-collage"},
+    {"id":"procedural-concrete-grain","kind":"canvas-svg","status":"ready","profiles":["concrete-anthem"],"tags":["raw","industrial","dark"],"safeZone":"center","loopSeconds":8,"license":"project-code","template":"rap-adaptive-collage"},
+    {"id":"procedural-rock-live-stage","kind":"webgl-procedural","status":"ready","profiles":["rock-arena"],"tags":["rock","live-stage","smoke","backlight"],"safeZone":"left-center","loopSeconds":8,"license":"project-code","template":"webgl-rock-stage"},
+    {"id":"external-ai-video-plate","kind":"video","status":"external-only","profiles":["code-collision","night-market-copy","concrete-anthem"],"tags":["ai-video","hero-only"],"safeZone":"declared-per-asset","loopSeconds":null,"license":"must-record-prompt-model-and-commercial-terms"},
+    {"id":"external-ae-lottie-plate","kind":"lottie-or-video","status":"external-only","profiles":["code-collision","macau-heritage","night-market-copy","concrete-anthem"],"tags":["motion-plate","hero-only"],"safeZone":"declared-per-asset","loopSeconds":null,"license":"must-record-source-and-commercial-terms"}
+  ]
+}

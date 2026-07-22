@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cimu · Hiphop Stencil Collision</title>
+    <style>
+      @font-face {
+        font-family: 'MV QingKe';
+        src: url('../fonts/hiphop-qingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf') format('truetype');
+        font-display: block;
+      }
+      html, body, canvas { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #111216; }
+      canvas, img { display: block; }
+      img { display: none; }
+    </style>
+  </head>
+  <body>
+    <img id="burst" src="motifs/sprayburst-red.svg" alt="" />
+    <img id="gem" src="motifs/faceted-gem.svg" alt="" />
+    <img id="slashes" src="motifs/rough-slashes.svg" alt="" />
+    <img id="cover" alt="" />
+    <canvas id="stage"></canvas>
+    <script>
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d', {alpha: false});
+      const img = {burst: document.getElementById('burst'), gem: document.getElementById('gem'), slashes: document.getElementById('slashes'), cover: document.getElementById('cover')};
+      window.__LYRICS = window.__LYRICS || [];
+      const RED = '#ef202d';
+      const WHITE = '#f4eee9';
+      const BLACK = '#111216';
+      const clamp = (n) => Math.max(0, Math.min(1, n));
+      const punch = (t) => 1 - Math.pow(1 - clamp(t), 4);
+      const snap = (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * clamp(t));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const hash = (n) => { const x = Math.sin(n * 93.71) * 19437.23; return x - Math.floor(x); };
+      window.__sceneAlpha = 1;
+      window.__sceneBlur = 0;
+
+      window.loadTimelineAssets = function loadTimelineAssets(meta) {
+        if (!meta.cover) return Promise.resolve();
+        return new Promise((resolveImage) => {
+          img.cover.addEventListener('load', resolveImage, {once: true});
+          img.cover.addEventListener('error', resolveImage, {once: true});
+          img.cover.src = meta.cover;
+        });
+      };
+
+      function resize() {
+        const ratio = devicePixelRatio || 1;
+        canvas.width = Math.round(innerWidth * ratio);
+        canvas.height = Math.round(innerHeight * ratio);
+      }
+
+      function setDisplay(size) {
+        ctx.font = `400 ${size}px "MV QingKe", "Hiragino Sans GB", sans-serif`;
+        ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      }
+
+      function setLabel(size) {
+        ctx.font = `700 ${size}px Menlo, "SFMono-Regular", monospace`;
+        ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      }
+
+      function fit(text, maxWidth, base) {
+        let size = base; setDisplay(size);
+        while (ctx.measureText(text).width > maxWidth && size > 56) { size -= 4; setDisplay(size); }
+        return size;
+      }
+
+      function label(text, x, y, options = {}) {
+        const {size = 20, alpha = 1, color = WHITE, align = 'left', rotation = 0} = options;
+        ctx.save(); ctx.globalAlpha = alpha * window.__sceneAlpha; ctx.translate(x, y); ctx.rotate(rotation); setLabel(size); ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(text, 0, 0); ctx.restore();
+      }
+
+      function stencil(text, x, y, options = {}) {
+        const {size = 150, color = WHITE, alpha = 1, blur = 0, scaleX = 1, rotation = 0, align = 'left', outline = false} = options;
+        ctx.save(); ctx.globalAlpha = alpha * window.__sceneAlpha; ctx.translate(x, y); ctx.rotate(rotation); ctx.scale(scaleX, 1); setDisplay(size); ctx.textAlign = align;
+        ctx.filter = blur || window.__sceneBlur ? `blur(${blur + window.__sceneBlur}px)` : 'none';
+        ctx.lineJoin = 'miter'; ctx.miterLimit = 2;
+        ctx.shadowColor = 'rgba(0,0,0,.72)'; ctx.shadowBlur = blur ? 0 : 8; ctx.shadowOffsetY = 8;
+        if (outline) { ctx.lineWidth = Math.max(4, size * .045); ctx.strokeStyle = BLACK; ctx.strokeText(text, 0, 0); }
+        ctx.fillStyle = color; ctx.fillText(text, 0, 0); ctx.restore();
+      }
+
+      function rect(x, y, w, h, color, alpha = 1, rotation = 0) {
+        ctx.save(); ctx.globalAlpha = alpha * window.__sceneAlpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation); ctx.fillStyle = color; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore();
+      }
+
+      function motif(name, x, y, w, h, alpha = 1, rotation = 0) {
+        const source = img[name]; if (!source.complete || !source.naturalWidth) return;
+        ctx.save(); ctx.globalAlpha = alpha * window.__sceneAlpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation); ctx.drawImage(source, -w / 2, -h / 2, w, h); ctx.restore();
+      }
+
+      function cover(x, y, w, h, alpha = 1, blur = 0, rotation = 0) {
+        const source = img.cover; if (!source.complete || !source.naturalWidth) return;
+        ctx.save(); ctx.globalAlpha = alpha; ctx.filter = blur ? `blur(${blur}px)` : 'none'; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation);
+        const scale = Math.max(w / source.naturalWidth, h / source.naturalHeight);
+        const sw = w / scale; const sh = h / scale;
+        ctx.drawImage(source, (source.naturalWidth - sw) / 2, (source.naturalHeight - sh) / 2, sw, sh, -w / 2, -h / 2, w, h);
+        ctx.restore();
+      }
+
+      function world(time, H) {
+        ctx.fillStyle = BLACK; ctx.fillRect(0, 0, 1920, H);
+        cover(-50 + Math.sin(time * .16) * 18, -90, 2020, H + 180, .22, 20);
+        ctx.fillStyle = 'rgba(17,18,22,.72)'; ctx.fillRect(0, 0, 1920, H);
+        const smear = ctx.createLinearGradient(0, 0, 1920, H);
+        smear.addColorStop(0, 'rgba(239,32,45,.34)'); smear.addColorStop(.22, 'rgba(239,32,45,0)'); smear.addColorStop(.75, 'rgba(239,32,45,.12)'); smear.addColorStop(1, 'rgba(239,32,45,0)');
+        ctx.fillStyle = smear; ctx.fillRect(0, 0, 1920, H);
+        for (let i = 0; i < 1500; i += 1) {
+          const x = hash(i) * 1920; const y = hash(i * 9) * H;
+          const a = .025 + hash(i * 31) * .08;
+          ctx.fillStyle = i % 7 ? `rgba(244,238,233,${a})` : `rgba(239,32,45,${a * 2})`;
+          ctx.fillRect(x, y, 1 + hash(i * 6) * 2, 1 + hash(i * 13) * 2);
+        }
+        stencil('DON’T', -30, 155, {size: 290, color: RED, alpha: .15, rotation: -.08});
+        stencil('CODE', 1390, H - 70, {size: 245, color: WHITE, alpha: .07, rotation: -.08});
+        cover(1500, 78, 304, 304, .78, 0, -.045);
+        ctx.save(); ctx.globalAlpha = .82; ctx.strokeStyle = '#d9b871'; ctx.lineWidth = 6; ctx.strokeRect(1482, 60, 340, 340); ctx.restore();
+        rect(0, 0, 1920, 16, RED, 1); rect(0, H - 16, 1920, 16, RED, 1);
+        const track = window.__TIMELINE_META?.title || 'SHAM.教授  //  TYPE COLLISION';
+        label(track, 64, 58, {size: 21, alpha: .75, color: WHITE});
+        label('NO STOCK EMOJI  /  SVG MOTIF PACK', 1855, H - 52, {size: 17, alpha: .6, color: WHITE, align: 'right'});
+        const scan = (time * 560) % 2360 - 300;
+        rect(scan, H * .82, 360, 6, RED, .9, -.12);
+      }
+
+      function trail(text, x, y, p, options = {}) {
+        const {direction = -1, size = 150, color = WHITE, distance = 320, rotation = 0} = options;
+        for (let i = 7; i > 0; i -= 1) {
+          const q = i / 7;
+          stencil(text, x + direction * distance * (1 - p) * q, y + q * 5, {size, color, alpha: (1 - q) * .2, blur: 3 + q * 8, rotation, outline: true});
+        }
+      }
+
+      function buildWord(word, progress, delay, x, y, options = {}) {
+        const p = snap(clamp((progress - delay) / .22));
+        const direction = options.direction || -1;
+        const from = x + direction * (1 - p) * 620;
+        trail(word, from, y, p, {...options, direction});
+        stencil(word, from, y, {...options, alpha: p, outline: true});
+      }
+
+      function hook(active, progress, H) {
+        const groups = active.groups || ['DON’T', 'TOUCH', 'MY CODE'];
+        const targets = [[124, H * .37], [640, H * .54], [1080, H * .70]];
+        rect(80, H * .54, 1540 * punch(progress), 28, RED, .98, -.045);
+        motif('slashes', 38, 118, 560, 168, .72 * punch(progress), -.04);
+        groups.forEach((word, i) => buildWord(word, progress, i * .10, targets[i][0], targets[i][1], {size: i === 2 ? 206 : 176, color: i === 2 ? RED : WHITE, direction: i === 1 ? 1 : -1, rotation: -.05}));
+        const tag = snap(clamp((progress - .35) / .16));
+        rect(1320, H * .24, 360 * tag, 54, WHITE, .94, -.07);
+        label('HOOK  /  LOCKED', 1342, H * .27, {size: 20, color: BLACK, alpha: tag, rotation: -.07});
+      }
+
+      function diamond(active, progress, H) {
+        const groups = active.groups || ['我代码', '都', '镶钻'];
+        motif('burst', 1000, H * .18, 540 * punch(progress), 540 * punch(progress), .34, -.12);
+        buildWord(groups[0], progress, 0, 130, H * .43, {size: 205, color: WHITE, direction: -1, rotation: -.04});
+        buildWord(groups[1], progress, .10, 760, H * .57, {size: 152, color: WHITE, direction: 1, rotation: -.04});
+        buildWord(groups[2], progress, .20, 1040, H * .53, {size: 265, color: RED, direction: 1, rotation: -.04});
+        const gemP = punch(clamp((progress - .32) / .22));
+        motif('gem', 1500 - (1 - gemP) * 220, H * .32, 250 * gemP, 198 * gemP, gemP, .12);
+        label('PRICELESS  //  999', 1120, H * .75, {size: 24, color: WHITE, alpha: gemP});
+      }
+
+      function declaration(active, progress, H) {
+        const groups = active.groups || ['我们代表', '新一代', '那种高级商贩'];
+        const y = [H * .31, H * .53, H * .75];
+        groups.forEach((word, i) => {
+          const p = punch(clamp((progress - i * .13) / .24));
+          const w = i === 2 ? 770 : 520;
+          rect(95 + i * 380, y[i] - 76, w * p, 145, i === 1 ? RED : '#2a2728', .98, i === 1 ? -.035 : .02);
+          buildWord(word, progress, i * .13, 130 + i * 390, y[i], {size: i === 2 ? 128 : 178, color: WHITE, direction: i % 2 ? 1 : -1, rotation: -.035});
+        });
+        motif('slashes', 1280, 84, 540, 162, .68 * punch(progress), -.07);
+      }
+
+      function rise(active, progress, H) {
+        const groups = active.groups || [active.text];
+        const p = snap(progress);
+        stencil('↑', 190, H * .74 - p * 270, {size: 330, color: RED, alpha: .78, outline: true});
+        buildWord(groups[0], progress, .10, 430, H * .52 - p * 90, {size: fit(groups[0], 1120, 220), color: WHITE, direction: -1, rotation: -.06});
+        label('HAIRLINE // UP UP UP', 448, H * .78, {size: 25, color: RED, alpha: p});
+      }
+
+      function generic(active, progress, H) {
+        const groups = active.groups || [active.text];
+        groups.forEach((word, i) => buildWord(word, progress, i * .12, 150 + i * 370, H * (.42 + i * .18), {size: fit(word, 1250, 166), color: i % 2 ? RED : WHITE, direction: i % 2 ? 1 : -1, rotation: -.04}));
+      }
+
+      function resolve(progress, H) {
+        const p = punch(progress);
+        motif('slashes', -140 + p * 250, H * .36, 720, 216, .84 * p, -.1);
+        rect(0, H * .5, 1920 * p, 35, RED, .95, -.04);
+      }
+
+      function renderAt(time) {
+        const W = canvas.width; const H = canvas.height; const unit = W / 1920; const logicalH = H / unit;
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(unit, unit);
+        window.__sceneAlpha = 1; window.__sceneBlur = 0; world(time, logicalH);
+        const active = window.__LYRICS.find((line) => time >= line.start && time < line.end);
+        if (!active) return;
+        const progress = clamp((time - active.start) / Math.max(.01, active.end - active.start));
+        const out = clamp((progress - .75) / .25);
+        window.__sceneAlpha = 1 - punch(out); window.__sceneBlur = out * 13;
+        if (active.role === 'hook') hook(active, progress, logicalH);
+        else if (active.role === 'punchline') diamond(active, progress, logicalH);
+        else if (active.role === 'declaration') declaration(active, progress, logicalH);
+        else if (active.role === 'comic-punchline') rise(active, progress, logicalH);
+        else generic(active, progress, logicalH);
+        if (out > 0) { window.__sceneAlpha = 1; window.__sceneBlur = 0; resolve(out, logicalH); }
+      }
+
+      window.renderAt = renderAt;
+      addEventListener('resize', () => { resize(); renderAt(0); });
+      resize(); renderAt(0);
+    </script>
+  </body>
+</html>

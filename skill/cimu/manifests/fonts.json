@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "policy": "Project font assets explicitly declared by the artist as free for commercial use are available to preview and delivery plans. Preserve their source metadata when it is available; do not block rendering for a separate license attachment.",
+  "fonts": [
+    {"id":"youshe-title","name":"优设标题黑","path":"../fonts/youshetitle/优设标题黑.ttf","role":["rap-display","pop-hook"],"tags":["heavy","clean","poster"],"licenseStatus":"recorded","licenseSource":"artist-declared-free-commercial"},
+    {"id":"zhanku-cool-black","name":"站酷酷黑体","path":"../fonts/zhankukuhei/站酷酷黑体.ttf","role":["rap-display","rock-display"],"tags":["heavy","angular","street"],"licenseStatus":"recorded","licenseSource":"artist-declared-free-commercial"},
+    {"id":"zhanku-literary","name":"站酷文艺体","path":"../fonts/zhankuwenyi/站酷文艺体.ttf","role":["folk-lyric","pop-lyric"],"tags":["human","literary","warm"],"licenseStatus":"recorded","licenseSource":"artist-declared-free-commercial"},
+    {"id":"zhenyan","name":"锐字真言体","path":"../fonts/zhenyan/锐字真言体.ttf","role":["rap-display","punchline"],"tags":["heavy","compressed","impact"],"licenseStatus":"recorded","licenseSource":"artist-declared-free-commercial"},
+    {"id":"lianmeng-qiyi","name":"联盟起艺卢帅正锐黑体","path":"../fonts/lianmengqiyi/联盟起艺卢帅正锐黑体.ttf","role":["rap-display","pop-hook"],"tags":["heavy","modern","poster"],"licenseStatus":"recorded","licenseSource":"artist-declared-free-commercial"},
+    {"id":"zhimangxing","name":"Zhi Mang Xing","path":"../fonts/rap-zhimangxing/ZhiMangXing-Regular.ttf","role":["brush-emphasis","ballad-lyric"],"tags":["brush","heritage","emotional"],"licenseStatus":"recorded","licensePath":"../fonts/rap-zhimangxing/license.md"},
+    {"id":"qingkehuangyou","name":"ZCOOL QingKe HuangYou","path":"../fonts/hiphop-qingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf","role":["rap-display"],"tags":["graphic","playful","poster"],"licenseStatus":"recorded","licensePath":"../fonts/hiphop-qingkehuangyou/license.md"},
+    {"id":"mashanzheng","name":"Ma Shan Zheng","path":"../fonts/ballad-mashanzheng/MaShanZheng-Regular.ttf","role":["ballad-lyric","folk-lyric"],"tags":["brush","warm","intimate"],"licenseStatus":"recorded","licensePath":"../fonts/ballad-mashanzheng/license.md"}
+  ]
+}

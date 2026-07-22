@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cimu · Poster Kinetic Type</title>
+    <style>
+      html, body, canvas { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #101114; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <script>
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d', {alpha: false});
+      window.__LYRICS = window.__LYRICS || [];
+      window.__DURATION = window.__DURATION || 6;
+
+      const RED = '#ed1b2f';
+      const WHITE = '#f5f1e9';
+      const INK = '#101114';
+      const clamp = (n, min = 0, max = 1) => Math.max(min, Math.min(max, n));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const expoOut = (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * clamp(t));
+      const cubicOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
+      const hash = (n) => {
+        const x = Math.sin(n * 78.233) * 43758.5453123;
+        return x - Math.floor(x);
+      };
+      window.__sceneAlpha = 1;
+      window.__sceneBlur = 0;
+
+      function resize() {
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(window.innerWidth * ratio);
+        canvas.height = Math.round(window.innerHeight * ratio);
+      }
+
+      function font(size, family = 'PingFang SC, Hiragino Sans GB, Arial Black, sans-serif') {
+        ctx.font = `900 ${size}px ${family}`;
+        ctx.textBaseline = 'middle';
+      }
+
+      function fit(text, maxWidth, base) {
+        let size = base;
+        font(size);
+        while (ctx.measureText(text).width > maxWidth && size > 46) {
+          size -= 4;
+          font(size);
+        }
+        return size;
+      }
+
+      function text(text, x, y, options = {}) {
+        const {
+          size = 128, color = WHITE, alpha = 1, scaleX = 1, scaleY = 1,
+          rotation = 0, skewX = 0, blur = 0, align = 'center', shadow = true,
+          family, letterSpacing = 0,
+        } = options;
+        ctx.save();
+        ctx.globalAlpha = alpha * window.__sceneAlpha;
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+        ctx.transform(scaleX, 0, skewX, scaleY, 0, 0);
+        font(size, family);
+        ctx.textAlign = align;
+        ctx.filter = blur || window.__sceneBlur ? `blur(${blur + window.__sceneBlur}px)` : 'none';
+        if (shadow && blur === 0) {
+          ctx.shadowColor = 'rgba(0,0,0,.62)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetY = 7;
+        }
+        if (!letterSpacing) {
+          ctx.fillStyle = color;
+          ctx.fillText(text, 0, 0);
+        } else {
+          const chars = [...text];
+          const widths = chars.map((char) => ctx.measureText(char).width);
+          const total = widths.reduce((sum, width) => sum + width, 0) + letterSpacing * (chars.length - 1);
+          let cursor = align === 'left' ? 0 : align === 'right' ? -total : -total / 2;
+          ctx.fillStyle = color;
+          chars.forEach((char, index) => {
+            ctx.fillText(char, cursor, 0);
+            cursor += widths[index] + letterSpacing;
+          });
+        }
+        ctx.restore();
+      }
+
+      function rectangle(x, y, w, h, color, alpha = 1, rotation = 0) {
+        ctx.save();
+        ctx.globalAlpha = alpha * window.__sceneAlpha;
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(rotation);
+        ctx.fillStyle = color;
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.restore();
+      }
+
+      function line(x1, y1, x2, y2, color, alpha = 1, width = 3) {
+        ctx.save();
+        ctx.globalAlpha = alpha * window.__sceneAlpha;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawScaffold(time, H) {
+        ctx.fillStyle = INK;
+        ctx.fillRect(0, 0, 1920, H);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,.09)';
+        ctx.lineWidth = 1;
+        for (let x = 56; x < 1920; x += 112) line(x, 0, x + H * .52, H, WHITE, .08, 1);
+        for (let y = 80; y < H; y += 92) line(0, y, 1920, y, WHITE, .04, 1);
+        ctx.restore();
+        for (let i = 0; i < 84; i += 1) {
+          const x = 20 + hash(i) * 1880;
+          const y = 40 + hash(i * 11) * (H - 80);
+          rectangle(x, y, 3, 3, i % 4 ? WHITE : RED, .09 + hash(i * 19) * .14);
+        }
+        rectangle(0, 0, 1920, 10, RED, .94);
+        rectangle(0, H - 10, 1920, 10, RED, .94);
+        text('SHAM.教授  /  DON’T TOUCH MY CODE', 66, 42, {size: 21, align: 'left', color: WHITE, alpha: .72, shadow: false, family: 'Menlo, monospace', letterSpacing: 1});
+        text('KINETIC TYPE STUDY  //  001', 1850, H - 38, {size: 18, align: 'right', color: WHITE, alpha: .58, shadow: false, family: 'Menlo, monospace'});
+        const scanX = -240 + (time * 420) % 2220;
+        rectangle(scanX, H * .83, 230, 4, RED, .85, -.24);
+      }
+
+      function drawTrail(word, x, y, t, opts = {}) {
+        const direction = opts.direction || -1;
+        const distance = opts.distance || 260;
+        const n = 8;
+        for (let i = n; i >= 1; i -= 1) {
+          const phase = i / n;
+          text(word, x + direction * distance * (1 - t) * phase, y, {
+            ...opts,
+            alpha: (opts.alpha ?? 1) * (1 - phase) * .18,
+            blur: 2 + phase * 8,
+            shadow: false,
+          });
+        }
+      }
+
+      function enter(progress, delay, span = .22) {
+        return expoOut(clamp((progress - delay) / span));
+      }
+
+      function drawHook(progress, H, secondPass) {
+        const words = secondPass ? ['DON’T', 'TOUCH', 'MY CODE'] : ['DON’T', 'TOUCH', 'MY CODE'];
+        const targetY = H * .51;
+        const positions = [388, 930, 1465];
+        const colors = [WHITE, WHITE, RED];
+        const scales = [.86, 1, .96];
+        const ghost = cubicOut(clamp((progress - .15) / .28));
+        text('DON’T TOUCH', 70, 206, {size: 250, align: 'left', color: RED, alpha: .12 * ghost, skewX: -.16, shadow: false, letterSpacing: -5});
+        text('MY CODE', 1800, H - 124, {size: 245, align: 'right', color: WHITE, alpha: .055 * ghost, skewX: -.1, shadow: false, letterSpacing: -5});
+        const ribbon = cubicOut(clamp(progress / .18));
+        rectangle(0, targetY + 100, 1920 * ribbon, 26, RED, .92, -.02);
+        words.forEach((word, index) => {
+          const p = enter(progress, index * .09, .24);
+          const startX = index === 1 ? 2120 : -420;
+          const x = lerp(startX, positions[index], p);
+          const y = targetY + (1 - p) * (index === 1 ? -48 : 34);
+          drawTrail(word, x, y, p, {size: index === 2 ? 154 : 136, color: colors[index], scaleX: scales[index], direction: index === 1 ? 1 : -1, alpha: .8});
+          text(word, x, y, {size: index === 2 ? 154 : 136, color: colors[index], scaleX: scales[index], skewX: -.08, shadow: true, letterSpacing: -3});
+        });
+        const stamp = enter(progress, .42, .16);
+        rectangle(1458, targetY - 162, 306 * stamp, 48, RED, .95, -.06);
+        text(secondPass ? 'HOOK // REPEAT' : 'SYSTEM LOCKED', 1460, targetY - 138, {size: 23, color: WHITE, alpha: stamp, shadow: false, family: 'Menlo, monospace', letterSpacing: 1});
+        for (let i = 0; i < 12; i += 1) {
+          const p = enter(progress, .38 + (i % 4) * .025, .14);
+          const x = 1450 + Math.cos(i * .78) * (160 + i * 10) * p;
+          const y = targetY + Math.sin(i * .78) * (100 + i * 5) * p;
+          rectangle(x, y, 10, 10, i % 2 ? RED : WHITE, .84 * p, i * .2);
+        }
+      }
+
+      function drawDiamond(progress, H) {
+        const phrase = ['我代码', '都', '镶钻'];
+        const targets = [420, 900, 1330];
+        text('DIAMOND', 130, 180, {size: 228, align: 'left', color: RED, alpha: .11 * cubicOut(progress), shadow: false, skewX: -.12});
+        phrase.forEach((word, index) => {
+          const p = enter(progress, index * .12, .2);
+          const x = targets[index];
+          const y = H * .52 + (1 - p) * (index === 2 ? 220 : -180);
+          const size = index === 2 ? 208 : index === 1 ? 136 : 164;
+          drawTrail(word, x, y, p, {size, color: index === 2 ? RED : WHITE, distance: index === 2 ? 350 : 210, direction: index === 2 ? 1 : -1});
+          text(word, x, y, {size, color: index === 2 ? RED : WHITE, scaleX: index === 2 ? 1.1 : 1, skewX: index === 2 ? -.12 : -.04, letterSpacing: -5});
+        });
+        const p = enter(progress, .42, .18);
+        for (let i = 0; i < 9; i += 1) {
+          const angle = i * Math.PI * 2 / 18;
+          const r = (175 + (i % 3) * 35) * p;
+          drawGem(1370 + Math.cos(angle) * r, H * .49 + Math.sin(angle) * r * .64, 18 + (i % 3) * 5, i % 3 ? WHITE : RED, .75 * p, angle);
+        }
+        line(210, H * .69, 1700, H * .69, RED, .85, 8);
+        text('VALUE // 999', 1710, H * .69 + 44, {size: 21, align: 'right', color: WHITE, alpha: .65, shadow: false, family: 'Menlo, monospace'});
+      }
+
+      function drawGem(x, y, size, color, alpha, rotation = 0) {
+        ctx.save();
+        ctx.globalAlpha = alpha * window.__sceneAlpha;
+        ctx.translate(x, y); ctx.rotate(rotation);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -size); ctx.lineTo(size * .9, 0); ctx.lineTo(0, size); ctx.lineTo(-size * .9, 0); ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = INK; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-size * .9, 0); ctx.lineTo(size * .9, 0); ctx.moveTo(0, -size); ctx.lineTo(0, size); ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawDeclaration(progress, H) {
+        const groups = ['我们代表', '新一代', '那种高级商贩'];
+        const ys = [H * .30, H * .52, H * .73];
+        const xs = [150, 715, 1058];
+        const widths = [660, 470, 720];
+        text('NEW GEN.', 1780, 160, {size: 154, align: 'right', color: RED, alpha: .14 * cubicOut(progress), shadow: false, skewX: -.12});
+        groups.forEach((group, index) => {
+          const p = enter(progress, index * .12, .25);
+          const stripY = ys[index] - 78;
+          rectangle(xs[index] - 40, stripY, widths[index] * p, 156, index === 1 ? RED : '#24242a', .98, index === 1 ? -.035 : 0);
+          const x = xs[index] + 16 + (1 - p) * (index === 0 ? -320 : 320);
+          drawTrail(group, x, ys[index], p, {size: index === 2 ? 112 : 128, color: index === 1 ? WHITE : WHITE, distance: 250, direction: index === 0 ? -1 : 1});
+          text(group, x, ys[index], {size: index === 2 ? 112 : 128, color: WHITE, align: 'left', skewX: -.06, letterSpacing: -4});
+          rectangle(xs[index] - 42, stripY - 18, 90 * p, 9, RED, .95);
+        });
+        const lock = enter(progress, .58, .2);
+        text('///  DECLARATION LOCKED', 112, H - 106, {size: 30, align: 'left', color: WHITE, alpha: lock, shadow: false, family: 'Menlo, monospace', letterSpacing: 1});
+      }
+
+      function drawTransition(progress, H) {
+        const p = cubicOut(clamp(progress));
+        for (let i = 0; i < 8; i += 1) {
+          const x = i * 270 - 250 + p * 310;
+          rectangle(x, 0, 92, H, i % 2 ? RED : WHITE, .42, -.22);
+        }
+      }
+
+      function renderAt(time) {
+        const W = canvas.width;
+        const H = canvas.height;
+        const unit = W / 1920;
+        const logicalH = H / unit;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(unit, unit);
+        window.__sceneAlpha = 1;
+        window.__sceneBlur = 0;
+        drawScaffold(time, logicalH);
+        const active = window.__LYRICS.find((line) => time >= line.start && time < line.end);
+        if (!active) return;
+        const p = clamp((time - active.start) / Math.max(.01, active.end - active.start));
+        const resolve = clamp((p - .76) / .24);
+        window.__sceneAlpha = 1 - cubicOut(resolve);
+        window.__sceneBlur = resolve * 9;
+        if (active.index === 0 || active.index === 3) drawHook(p, logicalH, active.index === 3);
+        if (active.index === 1) drawDiamond(p, logicalH);
+        if (active.index === 2) drawDeclaration(p, logicalH);
+        if (p > .76) {
+          window.__sceneAlpha = 1;
+          window.__sceneBlur = 0;
+          drawTransition((p - .76) / .24, logicalH);
+        }
+      }
+
+      window.renderAt = renderAt;
+      window.addEventListener('resize', () => { resize(); renderAt(0); });
+      resize();
+      renderAt(0);
+    </script>
+  </body>
+</html>

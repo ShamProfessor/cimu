@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "note": "Fixture: editor-approved hook grouping.",
+  "timingApproval": {"approved": true, "reviewer": "fixture-editor"},
+  "timeline": {"visualProfile": "code-collision"},
+  "lines": [
+    {
+      "index": 0,
+      "matchText": "Don't touch my code",
+      "patch": {
+        "groups": ["Don't touch", "my code"],
+        "groupStarts": [0.08, 0.52],
+        "role": "hook",
+        "importance": 5
+      }
+    }
+  ]
+}

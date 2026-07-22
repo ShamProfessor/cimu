@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cimu · Adaptive Collage</title>
+    <style>
+      @font-face { font-family: 'MV QingKe'; src: url('../fonts/hiphop-qingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV ZhiMang'; src: url('../fonts/rap-zhimangxing/ZhiMangXing-Regular.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV YouShe'; src: url('../fonts/youshetitle/优设标题黑.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV ZhanKuCool'; src: url('../fonts/zhankukuhei/站酷酷黑体.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV ZhanKuLiterary'; src: url('../fonts/zhankuwenyi/站酷文艺体.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV ZhenYan'; src: url('../fonts/zhenyan/锐字真言体.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV LianMeng'; src: url('../fonts/lianmengqiyi/联盟起艺卢帅正锐黑体.ttf') format('truetype'); font-display:block; }
+      html, body, canvas { width:100%; height:100%; margin:0; overflow:hidden; background:#102B25; }
+      canvas, img { display:block; } img { display:none; }
+    </style>
+  </head>
+  <body>
+    <img id="cover" alt="" />
+    <img id="coin" src="motifs/coin-seal.svg" alt="" />
+    <img id="tile" src="motifs/mahjong-tile.svg" alt="" />
+    <img id="rip" src="motifs/paper-rip.svg" alt="" />
+    <img id="burst" src="motifs/sprayburst-red.svg" alt="" />
+    <canvas id="stage"></canvas>
+    <script src="../effects/text/canvas-typography.js"></script>
+    <script src="../effects/transitions/canvas-transitions.js"></script>
+    <script src="../effects/overlays/canvas-overlays.js"></script>
+    <script>
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d', {alpha:false});
+      const img = Object.fromEntries(['cover','coin','tile','rip','burst'].map((key) => [key, document.getElementById(key)]));
+      window.__LYRICS = window.__LYRICS || [];
+      window.__TIMELINE_META = window.__TIMELINE_META || {};
+      const clamp = (value) => Math.max(0, Math.min(1, value));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const easeOut = (value) => 1 - Math.pow(1 - clamp(value), 4);
+      const easeIn = (value) => Math.pow(clamp(value), 3);
+      const hash = (value) => { const number = Math.sin(value * 31.416) * 43758.5453; return number - Math.floor(number); };
+      const FONT_FAMILY = {'youshe-title':'"MV YouShe", sans-serif', 'zhanku-cool-black':'"MV ZhanKuCool", sans-serif', 'zhanku-literary':'"MV ZhanKuLiterary", serif', zhenyan:'"MV ZhenYan", sans-serif', 'lianmeng-qiyi':'"MV LianMeng", sans-serif', qingkehuangyou:'"MV QingKe", sans-serif', zhimangxing:'"MV ZhiMang", cursive', mashanzheng:'"MV ZhiMang", cursive'};
+      const PROFILES = {
+        'macau-heritage': {bg:'#102B25', ink:'#142D26', paper:'#F1DFBA', accent:'#C8412C', sub:'#D4A64B', echo:'#3D8A5B', family:'heritage', motif:['coin','tile','rip']},
+        'code-collision': {bg:'#10142B', ink:'#11152B', paper:'#EEF2FF', accent:'#B8F200', sub:'#4169E1', echo:'#F05289', family:'code', motif:['burst','rip']},
+        'night-market-copy': {bg:'#2A211D', ink:'#2A211D', paper:'#F6E6C8', accent:'#E6781E', sub:'#6BB5AA', echo:'#B73C4B', family:'market', motif:['rip','coin']},
+        'concrete-anthem': {bg:'#202124', ink:'#17181A', paper:'#EEE9DF', accent:'#EC4538', sub:'#B9B3A7', echo:'#6C767B', family:'concrete', motif:['burst','rip']},
+        'gangster-flash': {bg:'#090909', ink:'#080709', paper:'#F4E9D0', accent:'#D9FF19', sub:'#FC3150', echo:'#6A00FF', family:'triad', motif:['burst','rip','coin']}
+      };
+      function profile() { return PROFILES[window.__TIMELINE_META.visualProfile] || PROFILES['concrete-anthem']; }
+      window.loadTimelineAssets = function(meta) {
+        if (!meta.cover) return Promise.resolve();
+        return new Promise((done) => { img.cover.addEventListener('load', done, {once:true}); img.cover.addEventListener('error', done, {once:true}); img.cover.src = meta.cover; });
+      };
+      function resize() { const ratio = devicePixelRatio || 1; canvas.width = Math.round(innerWidth * ratio); canvas.height = Math.round(innerHeight * ratio); }
+      function setup(font, size, align = 'left') { ctx.font = `400 ${size}px ${font}`; ctx.textAlign = align; ctx.textBaseline = 'middle'; }
+      function stylePlan() { return window.__TIMELINE_META?.stylePlan || {}; }
+      function display(size, align) { setup(FONT_FAMILY[stylePlan().fontPlan?.primary] || '"MV YouShe", "STHeiti", sans-serif', size, align); }
+      function brush(size, align) { setup(FONT_FAMILY[stylePlan().fontPlan?.emphasis] || '"MV ZhiMang", cursive', size, align); }
+      function mono(size, align) { setup('700 ' + size + 'px "DIN Condensed", Menlo, monospace', size, align); }
+      function fit(text, maxWidth, base, font = 'display') {
+        const select = font === 'brush' ? brush : display; let size = base; select(size);
+        while (ctx.measureText(text).width > maxWidth && size > 46) { size -= 3; select(size); }
+        return size;
+      }
+      function image(name, x, y, w, h, alpha = 1, rotation = 0) {
+        const source = img[name]; if (!source?.complete || !source.naturalWidth) return;
+        ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation); ctx.drawImage(source, -w / 2, -h / 2, w, h); ctx.restore();
+      }
+      function croppedCover(x, y, w, h, alpha, blur, zoom = 1) {
+        const source = img.cover; if (!source?.complete || !source.naturalWidth) return;
+        const scale = Math.max(w / source.naturalWidth, h / source.naturalHeight) * zoom, sw = w / scale, sh = h / scale;
+        ctx.save(); ctx.globalAlpha = alpha; ctx.filter = blur ? `blur(${blur}px)` : 'none';
+        ctx.drawImage(source, (source.naturalWidth - sw) / 2, (source.naturalHeight - sh) / 2, sw, sh, x, y, w, h); ctx.restore();
+      }
+      function rect(x, y, w, h, fill, alpha = 1, rotation = 0) { ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rotation); ctx.fillStyle = fill; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore(); }
+      function circle(x, y, radius, fill, alpha = 1) { ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      function text(text, x, y, options = {}) {
+        const {size = 150, color, alpha = 1, rotation = 0, align = 'left', scaleX = 1, font = 'display', stroke = null, shadow = true} = options;
+        ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.rotate(rotation); ctx.scale(scaleX, 1);
+        (font === 'brush' ? brush : font === 'mono' ? mono : display)(size, align);
+        if (shadow) { ctx.shadowColor = 'rgba(10,10,10,.65)'; ctx.shadowBlur = options.glow || 1; ctx.shadowOffsetX = 9; ctx.shadowOffsetY = 10; }
+        if (stroke) { ctx.lineWidth = Math.max(3, size * .045); ctx.lineJoin = 'round'; ctx.strokeStyle = stroke; ctx.strokeText(text, 0, 0); }
+        ctx.fillStyle = color; ctx.fillText(text, 0, 0); ctx.restore();
+      }
+      function audioAt(time) {
+        const audio = window.__TIMELINE_META.audioData; if (!audio?.frames?.length) return {rms:.35,bass:.35,mid:.3,treble:.25};
+        return audio.frames[Math.min(audio.frames.length - 1, Math.max(0, Math.round(time * audio.fps)))] || {rms:.35,bass:.35,mid:.3,treble:.25};
+      }
+      function beatNear(target, start, end) {
+        const beats = window.__TIMELINE_META.audioData?.beats || []; const candidates = beats.filter((beat) => beat >= start && beat <= end);
+        return candidates.length ? candidates.reduce((best, beat) => Math.abs(beat - target) < Math.abs(best - target) ? beat : best, candidates[0]) : target;
+      }
+      function groupStarts(line) {
+        if (line.groupStarts?.length === line.groups?.length) return line.groupStarts;
+        const groups = line.groups?.length ? line.groups : [line.text]; const span = line.end - line.start; const build = Math.min(span * .58, Math.max(.34, groups.length * .22));
+        return groups.map((_, index) => Number(beatNear(line.start + Math.min(build, .11 + index * (build / Math.max(1, groups.length - 1))), line.start + .04, line.start + build).toFixed(3)));
+      }
+      function gangsterChapter(time) {
+        if (time < 5.799) return 'opening';
+        if (time < 15.344) return 'table';
+        if (time < 21.834) return 'route';
+        return 'storm';
+      }
+      function world(time, H, p) {
+        ctx.fillStyle = p.bg; ctx.fillRect(0, 0, 1920, H);
+        croppedCover(-100 + Math.sin(time * .18) * 24, -70 + Math.cos(time * .12) * 18, 2120, H + 140, .28, 15, 1.07);
+        rect(0, 0, 1920, H, p.ink, .73);
+        const wash = ctx.createRadialGradient(1110, H * .38, 40, 1050, H * .42, 1080);
+        wash.addColorStop(0, p.accent + 'A8'); wash.addColorStop(.34, p.accent + '30'); wash.addColorStop(1, p.bg + '00'); ctx.fillStyle = wash; ctx.fillRect(0, 0, 1920, H);
+        text(window.__TIMELINE_META.title?.split('//')[0]?.trim() || 'RAP', 22, 142, {size:262, color:p.paper, alpha:.055, rotation:-.045, font:'display', shadow:false});
+        if (p.family === 'heritage') { image('coin', 1420 + Math.sin(time * .5) * 18, 100, 245, 245, .18, time * .05); image('tile', 1680, H * .52, 132, 181, .14, -.15); }
+        if (p.family === 'code') { image('burst', 1310, 115, 410, 410, .18, -.2); }
+        if (p.family === 'market') { image('coin', 62, H - 300, 224, 224, .14, .11); }
+        const a = audioAt(time); circle(1510, H * .80, 70 + a.bass * 38, p.accent, .07 + a.rms * .08); circle(1590, H * .76, 23 + a.treble * 18, p.sub, .16);
+        if (p.family === 'triad') {
+          const chapter = gangsterChapter(time);
+          const flash = Math.max(0, Math.sin(time * 5.8 + .3));
+          const chapterAccent = chapter === 'route' ? p.sub : chapter === 'storm' ? '#45CFFF' : p.accent;
+          rect(0, H * .17, 1920, 8, chapterAccent, .28 + a.treble * .36, -.024);
+          rect(0, H * .83, 1920, 17, chapter === 'storm' ? '#45CFFF' : p.sub, .16 + a.bass * .24, .018);
+          text('3977', 48, 178, {size:310, color:p.paper, alpha:.075, rotation:-.065, font:'display', shadow:false});
+          text(chapter === 'opening' ? 'NO SLEEP // SOUTH SIDE // 03:97' : chapter === 'table' ? 'HOUSE RULES // HIGH STAKES // NO REFUNDS' : chapter === 'route' ? 'EAST / SOUTH / WEST // 3977 IN TRANSIT' : 'WIND / RAIN / NO WAY HOME', 74, H * .92, {size:41, color:p.paper, alpha:.38, font:'mono', shadow:false});
+          circle(1550 + Math.sin(time * .7) * 65, H * .21, 88 + flash * 72, p.paper, .025 + flash * .055);
+          rect(1700, 64, 126, 8, p.paper, .30, 0); rect(1759, 28, 8, 80, p.paper, .30, 0);
+          if (chapter === 'table') { image('coin', 1240 + Math.sin(time * .45) * 36, H * .20, 290, 290, .22, time * .09); image('tile', 1570, H * .50, 158, 216, .28, -.12); }
+          if (chapter === 'route') { for (let i = 0; i < 5; i += 1) rect(120 + i * 294 - time * 74, H * (.22 + i * .12), 360, 13, i % 2 ? p.sub : p.accent, .18 + a.mid * .16, -.04); text('东 港 南 亚', 1140, H*.28, {size:114, color:p.paper, alpha:.22, rotation:.03, font:'display', shadow:false}); }
+          if (chapter === 'storm') { image('burst', 1220, H * .08, 580, 580, .26 + a.treble * .20, -.18); for (let i = 0; i < 4; i += 1) rect(1160 + i * 160, H * (.25 + i * .11), 660, 18, '#45CFFF', .18 + a.bass * .18, -.38); }
+        }
+      }
+      function screenprintWord(word, x, y, opts, timing, time, p, effectPlan = {}) {
+        const audio = audioAt(time); const enter = easeOut(clamp((time - timing) / .16));
+        const motion = window.MVLyricEffects.phraseMotion(effectPlan, enter, audio, opts.direction || -1);
+        const scale = 1 + motion.breatheScale + (1 - enter) * .14;
+        const maxWidth = opts.maxWidth || 1460; const primaryFont = opts.hero ? 'brush' : (opts.font || 'display'); const size = fit(word, maxWidth / scale, opts.base || 178, primaryFont);
+        const direction = opts.direction || -1; const xNow = x + direction * (1 - enter) * motion.distance; const alpha = enter;
+        const rotation = opts.rotation + motion.rotation;
+        const echoY = y + (motion.ghostOffsetY ? Math.sin((time - timing) * 4) * motion.ghostOffsetY : 12);
+        if (motion.flash) {
+          rect(x - 190, y - size * .63, Math.min(maxWidth + 390, 1280), size * 1.28, p.paper, motion.flash * .40, rotation);
+          rect(x - 250, y - 10, Math.min(maxWidth + 520, 1440), 22 + motion.flash * 44, p.accent, motion.flash * .78, rotation);
+        }
+        if (motion.split) {
+          text(word, xNow - direction * (38 + motion.split * 80), y + 7, {...opts, size, rotation, color:p.sub, alpha:alpha * motion.split * .76, scaleX:scale * 1.02, shadow:false});
+          text(word, xNow + direction * (26 + motion.split * 66), y - 9, {...opts, size, rotation, color:p.echo, alpha:alpha * motion.split * .70, scaleX:scale * .99, shadow:false});
+        }
+        if (motion.scatter) {
+          for (let i = 0; i < 7; i += 1) rect(x + hash(i + timing) * maxWidth - 80, y + (hash(i * 9 + timing) - .5) * size * 1.4, 12 + hash(i) * 28, 9 + hash(i * 3) * 22, i % 2 ? p.accent : p.sub, motion.scatter * .70, (hash(i * 6) - .5) * .6);
+        }
+        text(word, xNow - direction * 15, echoY, {...opts, size, rotation, color:p.echo, alpha:alpha * .54, scaleX:scale, shadow:false});
+        text(word, xNow, y, {...opts, size, rotation, font:primaryFont, color:opts.color || p.paper, alpha, scaleX:scale, stroke:p.ink, glow:motion.glow});
+        const ink = clamp((time - timing - .10) / .22); if (ink > 0 && opts.hero) text(word, xNow + 7, y - 6, {size, color:p.accent, alpha:ink * .32, scaleX:scale * 1.006, font:'brush', shadow:false});
+      }
+      function layoutFor(line, H) {
+        const groups = line.groups?.length ? line.groups.slice(0, 3) : [line.text];
+        const role = line.role || 'verse';
+        if (H > 1600) {
+          const y = groups.length === 1 ? [H * .52] : groups.length === 2 ? [H * .43, H * .62] : [H * .32, H * .51, H * .70];
+          return groups.map((word, i) => ({word, x:120, y:y[i], base:i === groups.length - 1 ? 292 : 246, color:i === groups.length - 1 && role !== 'verse' ? profile().accent : profile().paper, maxWidth:1680, direction:i % 2 ? 1 : -1, rotation:i % 2 ? .018 : -.018, hero:i === groups.length - 1 && (role === 'hook' || role === 'punchline')}));
+        }
+        if (role === 'punchline') return groups.map((word, i) => ({word, x:i === 0 ? 90 : i === 1 ? 720 : 1040, y:[H*.38,H*.58,H*.73][i], base:i === groups.length - 1 ? 225 : 174, color:i === groups.length - 1 ? profile().accent : profile().paper, maxWidth:i === 0 ? 760 : i === 1 ? 620 : 760, direction:i % 2 ? 1 : -1, rotation:[-.05,.02,-.04][i], hero:i === groups.length - 1}));
+        if (role === 'hook') return groups.map((word, i) => ({word, x: i === 0 ? 84 : i === 1 ? 500 : 1040, y:[H*.32,H*.56,H*.73][i], base:i === 2 ? 242 : 188, color:i === 2 ? profile().accent : profile().paper, maxWidth:i === 0 ? 650 : i === 1 ? 700 : 800, direction:i === 1 ? 1 : -1, rotation:[-.05,.02,-.03][i], hero:i === 2}));
+        if (role === 'declaration') return groups.map((word, i) => ({word, x:[105,600,1090][i], y:[H*.35,H*.55,H*.72][i], base:i === 2 ? 196 : 166, color:i === 1 ? profile().sub : profile().paper, maxWidth:i === 0 ? 620 : i === 1 ? 620 : 700, direction:i % 2 ? 1 : -1, rotation:[-.035,.035,-.035][i], hero:false}));
+        return groups.map((word, i) => ({word, x:i === 0 ? 118 : i === 1 ? 735 : 1240, y:[H*.42,H*.60,H*.74][i], base:i === 0 ? 194 : 154, color:i === 1 ? profile().accent : profile().paper, maxWidth:i === 0 ? 820 : i === 1 ? 650 : 560, direction:i % 2 ? 1 : -1, rotation:[-.03,.02,-.025][i], hero:false}));
+      }
+      function plate(line, time, H, p) {
+        const a = audioAt(time), local = time - line.start;
+        if (p.family === 'heritage') {
+          image('tile', 1485 + Math.sin(local * 1.4) * 34, H * .52 - a.bass * 32, 142, 195, .28, -.11 + a.mid * .05);
+          image('coin', 1550 - local * 9, H * .18, 170, 170, .38, local * .22);
+          rect(1330, H*.78, 410, 150, p.paper, .09, -.09); text('三条 A', 1390, H*.84, {size:80, color:p.paper, alpha:.18, rotation:-.06, font:'brush', shadow:false});
+        } else if (p.family === 'code') {
+          for (let i=0;i<4;i+=1) rect(1260 + i*75 - local*44, 215 + i*78, 180, 20, i%2?p.accent:p.sub, .22, -.18);
+        } else if (p.family === 'triad') {
+          const chapter = gangsterChapter(time);
+          if (chapter === 'opening') {
+            croppedCover(1290 + Math.sin(local * .55) * 48, H * .12, 420, 420, .43, 1.5, 1.18);
+            rect(1262, H * .10, 462, 462, p.paper, .13, -.07);
+            image('burst', 1370 + Math.sin(local * 1.2) * 32, H * .31, 360, 360, .34 + a.treble * .17, -.18);
+            text('WANTED', 1362, H * .18, {size:106, color:p.accent, alpha:.88, rotation:-.08, font:'display'});
+          } else if (chapter === 'table') {
+            rect(1280, H*.16, 430, 320, p.paper, .11, -.10); text('ALL IN', 1350, H*.33, {size:136, color:p.accent, alpha:.70, rotation:-.08, font:'display'}); image('coin', 1440 + Math.sin(local)*38, H*.39, 190, 190, .35, local*.22);
+          } else if (chapter === 'route') {
+            rect(1280, H*.18, 420, 284, p.sub, .16, .04); text('NO BORDER', 1334, H*.30, {size:96, color:p.paper, alpha:.86, rotation:.035, font:'display'}); text('3977', 1480, H*.56, {size:154, color:p.accent, alpha:.84, rotation:-.04, font:'display'});
+          } else {
+            text('刮 来', 1380, H*.35, {size:220, color:'#45CFFF', alpha:.56, rotation:-.15, font:'brush'}); image('rip', 1110 + Math.sin(local)*50, H*.64, 800, 160, .40, -.12);
+          }
+          text('LJZ329', 1450, H * .82, {size:76, color:p.paper, alpha:.70, rotation:.035, font:'mono'});
+          rect(94, H*.80, 490 + a.bass * 185, 28, chapter === 'storm' ? '#45CFFF' : p.accent, .22 + a.rms * .22, -.03);
+        } else {
+          image('rip', -100 + Math.sin(local*.8)*34, H*.72, 1100, 180, .24, -.03); image('burst', 1360, 90, 310, 310, .20 + a.treble*.1, -.18);
+        }
+      }
+      function transition(line, time, H, p, effectPlan = {}) {
+        const remain = line.end - time; const q = clamp((.18 - remain) / .18); if (q <= 0) return;
+        window.MVLyricEffects.renderTransition?.(effectPlan, {q, H, p, rect, circle, easeIn});
+        window.MVLyricEffects.renderResolve(effectPlan, {q, H, p, image, rect, circle, easeIn});
+      }
+      function renderAt(time) {
+        const W = canvas.width, H = canvas.height, unit = W / 1920, logicalH = H / unit, p = profile();
+        ctx.setTransform(1,0,0,1,0,0); ctx.scale(unit, unit); world(time, logicalH, p);
+        const line = window.__LYRICS.find((entry) => time >= entry.start && time < entry.end); if (!line) return;
+        const effectPlan = stylePlan().lines?.find((entry) => entry.index === line.index) || {overlay:'grain-plate'};
+        window.MVLyricEffects.drawOverlay(effectPlan, {ctx, H:logicalH, p, time, hash, rect, circle, audio:audioAt(time), line});
+        plate(line, time, logicalH, p); const starts = groupStarts(line), layout = layoutFor(line, logicalH);
+        layout.forEach((item, index) => screenprintWord(item.word, item.x, item.y, item, starts[index] || line.start, time, p, effectPlan));
+        transition(line, time, logicalH, p, effectPlan);
+      }
+      window.renderAt = renderAt; addEventListener('resize', () => { resize(); renderAt(0); }); resize(); renderAt(0);
+    </script>
+  </body>
+</html>

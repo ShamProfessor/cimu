@@ -1,0 +1,21 @@
+.DS_Store
+.asr-venv/
+dist/
+
+# Generated renders and local reference-video studies do not belong in source control.
+*.mp4
+Rapeter-*.mp4
+不太准字幕MV_*.mp4
+字幕视频Top_*.mp4
+视觉设计_*.mp4
+质感说唱字幕*.mp4
+
+# Local renders and exploratory sample projects stay outside the public source repo.
+sample/
+tech.png
+
+# Keep core fixtures only; the owned public song sample lives under examples/.
+test/*
+!test/fixtures/
+!test/fixtures/**
+!test/timeline-editor-core.test.mjs
