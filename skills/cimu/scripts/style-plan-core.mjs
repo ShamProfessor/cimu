@@ -76,13 +76,16 @@ export function normalizeStyleIntent(timeline = {}) {
   const source = timeline.styleIntent ?? timeline.userIntent ?? {};
   const list = (value) => [...new Set((Array.isArray(value) ? value : []).map(String).filter(Boolean))];
   const rawIntensity = Number(source.animationIntensity);
+  const rawBackgroundMode = source.backgroundMode === undefined ? 'auto' : String(source.backgroundMode).trim().toLowerCase();
+  if (!['auto', 'black', 'provided'].includes(rawBackgroundMode)) throw new Error('styleIntent.backgroundMode must be auto, black, or provided.');
   return {
     description: typeof source.description === 'string' ? source.description.trim() : null,
     animationIntensity: Number.isFinite(rawIntensity) ? Math.max(1, Math.min(5, Math.round(rawIntensity))) : null,
     preferredEffects: list(source.preferredEffects),
     excludedEffects: list(source.excludedEffects),
     palette: Array.isArray(source.palette) ? source.palette.map(String).slice(0, 6) : null,
-    sceneEngine: source.sceneEngine ? String(source.sceneEngine) : null
+    sceneEngine: source.sceneEngine ? String(source.sceneEngine) : null,
+    backgroundMode: rawBackgroundMode
   };
 }
 
@@ -164,6 +167,8 @@ export function validateStylePlan(plan, {timeline = null, effectManifest, backgr
   if (plan.schemaVersion !== 2) errors.push({code:'style-plan-schema', expected:2, actual:plan.schemaVersion ?? null});
   if (!WEBGL_TEMPLATE_IDS.includes(plan.template)) errors.push({code:'unsupported-template', template:plan.template ?? null, message:'Delivery StylePlans must use the capability-checked WebGL stage.'});
   if (!SCENE_ENGINES[plan.sceneEngine]) errors.push({code:'unknown-scene-engine', sceneEngine:plan.sceneEngine ?? null});
+  if (!['auto', 'black', 'provided'].includes(plan.backgroundMode ?? 'auto')) errors.push({code:'invalid-background-mode', backgroundMode:plan.backgroundMode ?? null});
+  if (plan.backgroundMode === 'provided' && !plan.backgroundImage) errors.push({code:'missing-provided-background'});
   if (plan.sceneEngine && plan.profile && !SCENE_ENGINES[plan.sceneEngine]?.profiles.includes(plan.profile) && !plan.userIntent?.sceneEngine) {
     warnings.push({code:'profile-scene-mismatch', profile:plan.profile, sceneEngine:plan.sceneEngine});
   }

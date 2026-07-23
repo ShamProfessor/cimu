@@ -27,9 +27,23 @@ The renderer consumes schema version 2. `start` and `end` are seconds relative t
 
 Use `review.required: true` for plain text or unfinished manual edits. Only an explicit editor final action or a reviewed override may clear it.
 
+### Generated background plate
+
+For a delivery-specific image, record its absolute local path instead of replacing a bundled asset. The renderer preserves the entire 16:9 plate in screen space and writes the path into `style-plan.json`:
+
+```json
+"generatedBackground": {
+  "path": "/absolute/path/artist-plate.png",
+  "type": "AI-generated still plate",
+  "prompt": "Recorded generation prompt and license context"
+}
+```
+
+The image must exist when the StylePlan is resolved. `safeZone` may choose a vertical reading lane, but landscape subtitles remain horizontally centered.
+
 ## Job contract
 
-`run-delivery.mjs` writes this `job.json` and invokes the production renderer:
+`run-delivery.mjs` writes this hidden `.cimu/job.json` and invokes the production renderer. The default preset is a review render; use `quality: "final"` for a master:
 
 ```json
 {
@@ -38,14 +52,15 @@ Use `review.required: true` for plain text or unfinished manual edits. Only an e
   "timeline": "/absolute/path/song.reviewed.json",
   "sourceStartSeconds": 75.877,
   "durationSeconds": 31.42,
-  "width": 1920,
-  "height": 1080,
-  "fps": 30,
+  "quality": "preview",
+  "width": 1280,
+  "height": 720,
+  "fps": 24,
   "visualProfile": "rock-indie-melancholy"
 }
 ```
 
-`genre` and `visualProfile` are optional overrides. Preserve the generated `audio.json`, `song-profile.json`, `direction.json`, and `style-plan.json`; they are the reproducibility record.
+`genre`, `visualProfile`, and `workers` are optional overrides. Preserve the generated `audio.json`, `song-profile.json`, `direction.json`, and `style-plan.json` in `.cimu/`; they are the reproducibility record, not user-facing delivery files.
 
 ## Style intent and sections
 
@@ -58,6 +73,7 @@ Users may control the resolver without editing the generated StylePlan:
     "animationIntensity": 3,
     "preferredEffects": ["clip-wipe", "float-wind"],
     "excludedEffects": ["chromatic-whip", "flashbulb-field"],
+    "backgroundMode": "auto",
     "sceneEngine": "city-route",
     "palette": ["#18201D", "#E7D8BE", "#B65D3C"]
   },
@@ -75,14 +91,14 @@ Users may control the resolver without editing the generated StylePlan:
 }
 ```
 
-Palette order is `[background, lyric, accent, secondary]`; use six-digit hex colors. Missing entries fall back to the selected profile.
+Palette order is `[background, lyric, accent, secondary]`; use six-digit hex colors. Missing entries fall back to the selected profile. `backgroundMode` may be `auto` (only profile-compatible approved plates), `black` (intentional pure-black fallback), or `provided` (requires `generatedBackground.path` or `backgroundImage`).
 
-StylePlan schema v2 persists the resolved `userIntent`, `sceneEngine`, `sections`, line `sectionId`, and `capabilityContract`. `style-plan-validation.json` must pass before rendering.
+StylePlan schema v2 persists the resolved `userIntent`, `sceneEngine`, `sections`, line `sectionId`, `safeZone`, and `capabilityContract`. The resolver validates this plan before rendering and blocks an invalid plan directly.
 
 ## Delivery gates
 
-- Require `0 <= start < end <= durationSeconds`, non-empty text, ordered group starts, no unintended line overlap, and a readable final group hold.
+- Require `0 <= start < end <= durationSeconds`, non-empty text, groups whose concatenation exactly covers the source lyric, ordered group starts, no unintended line overlap, and a readable final group hold.
 - Treat short line dwell as a warning for human review.
-- Require H.264 video, AAC audio, requested dimensions, duration within one frame, and no sampled black frame edge.
+- Require H.264 video, AAC audio, requested dimensions, duration within one frame, and no sampled black frame edge unless the resolved plan explicitly records an intentional black background.
 - Require every StylePlan scene, background, section, and effect to be supported by the selected renderer capability contract.
 - Render 16:9 first. Treat a portrait version as a separate adaptation with its own safe-zone approval.

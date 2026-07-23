@@ -6,7 +6,7 @@
 
 使用 Cimu（词幕）将本地音频和歌词制作成可审阅、可复跑的歌词视觉 MV。最稳定的输入是 **音频 + 已确认时间码的 LRC/SRT/ASS**；仅有纯文本时，请先在本地时间轴编辑器完成逐句校时。
 
-默认交付为 1920×1080、30fps、H.264/AAC 的 16:9 母版。若需要 9:16，请在需求中明确提出，并将其视为一次独立的安全区审阅。
+默认交付为 1280×720、24fps、H.264/AAC 的 16:9 预览。确认后使用 `--quality final` 生成 1920×1080、30fps 母版。若需要 9:16，请在需求中明确提出，并将其视为一次独立的安全区审阅。
 
 ## 2. 前置条件
 
@@ -65,6 +65,8 @@ node scripts/run-delivery.mjs \
 | `--duration` | 渲染范围秒数 | `--duration 30` |
 | `--width` / `--height` | 输出尺寸 | `--width 1920 --height 1080` |
 | `--fps` | 帧率 | `--fps 30` |
+| `--quality` | `preview`（默认）或 `final` | `--quality final` |
+| `--workers` | 截帧 Chrome worker 数，默认自动取最多 4 个 | `--workers 2` |
 | `--genre` | 显式指定歌曲类型提示 | `--genre folk` |
 | `--visual-profile` | 覆盖自动视觉路由 | `--visual-profile folk-city-walk` |
 
@@ -90,22 +92,14 @@ node scripts/serve-timeline-editor.mjs
 
 ## 5. 交付包说明
 
-`--out` 指向的目录会成为一个歌曲片段的完整交付单元。至少检查以下文件：
+`--out` 指向的目录是用户交付目录，只显示成片：
 
 ```text
-master-16x9.mp4             最终横版成片
-delivery-validation.json    编码、时长、尺寸与黑边检查结果
-delivery-manifest.json      成片与侧车文件关联清单
-timeline-validation.json    歌词时间轴校验结果
-style-plan-validation.json  场景、段落、效果与渲染能力校验
-audio.json                  音频画像
-song-profile.json           歌曲与视觉路由证据
-direction.json              句子角色和重要度建议
-style-plan.json             固定 seed 的字体、效果、背景方案
-job.json                    本次渲染的参数快照
+preview-16x9.mp4             默认预览成片
+# 或 master-16x9.mp4         `--quality final` 的正式成片
 ```
 
-请将这些文件与 MP4 一起归档。再次修改文案、时间、profile 或效果时，从这些 JSON 侧车定位相应层，再重新渲染；不要只保存导出的视频文件。
+`.cimu/` 是同目录下的隐藏工作区，包含 `job.json`、时间轴、样式计划、音频画像与验收报告。它保留用于 Agent 复跑和排障，不应作为用户交付内容展示。
 
 ## 6. 人工创意控制
 
@@ -115,7 +109,7 @@ job.json                    本次渲染的参数快照
 2. 使用 `references/manual-overrides.md` 的格式创建有记录的人工覆盖；
 3. 通过 `styleIntent` 指定强度、偏好效果、禁止效果、调色板或场景引擎；
 4. 通过显式 `sections` 调整主歌、副歌和结尾的视觉强度；
-5. 重新生成并审阅 `style-plan.json` 和 `style-plan-validation.json`，确认覆盖确实被保留。
+5. 重新生成并审阅 `.cimu/style-plan.json`，确认覆盖确实被保留；解析器会在像素渲染前直接阻断无效方案。
 
 请阅读 `references/style-resolution.md` 理解确定性选择规则，阅读 `references/creative-direction.md` 理解 hero、hook、punchline 的建议语义。人工覆盖应服务于歌曲表达，不应用于把每一句都做成高强度特效。
 
@@ -125,12 +119,6 @@ job.json                    本次渲染的参数快照
 
 ```bash
 node scripts/release-check.mjs
-```
-
-本地已生成 20 秒参考成片时运行：
-
-```bash
-node scripts/release-check.mjs --with-goldens
 ```
 
 自动检查通过后，仍需要在最终分辨率人工观看并确认：
@@ -163,7 +151,8 @@ node scripts/release-check.mjs --with-goldens
 project/
   source/                 原始音频、原始 LRC/SRT/ASS，只读保留
   work/                   reviewed timeline 与人工覆盖
-  delivery/song-range/    本次可交付 MP4 与全部 JSON 侧车
+  delivery/song-range/    本次可交付 MP4
+    .cimu/                隐藏的复跑与排障侧车
 ```
 
 这种结构让原始素材、可编辑审阅稿与最终交付物互不覆盖，也使重跑与问题追溯保持清晰。

@@ -23,6 +23,14 @@ function key(value) {
 }
 
 function proposedGroups(text) {
+  // Chinese lyrics do not contain word separators. Splitting them by character
+  // count produces false phrases such as “是你对我在索 / 取着罗列着”, which
+  // changes the sentence while it is being read. Keep an LRC line intact unless
+  // the lyric itself supplies a punctuation boundary; deliberate phrase timing
+  // remains an explicit, reviewable override.
+  const containsHan = /[\u3400-\u9fff]/.test(text);
+  const punctuationParts = text.split(/(?<=[，。！？、,.!?])/).map((part) => part.trim()).filter(Boolean);
+  if (containsHan) return punctuationParts.length > 1 && punctuationParts.length <= 3 ? punctuationParts : [text];
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length >= 3) {
     const target = Math.min(3, Math.ceil(words.length / 2));
@@ -30,13 +38,8 @@ function proposedGroups(text) {
     words.forEach((word, index) => groups[Math.min(target - 1, Math.floor(index * target / words.length))].push(word));
     return groups.map((group) => group.join(' ')).filter(Boolean);
   }
-  const punctuationParts = text.split(/(?<=[，。！？、,.!?])/).map((part) => part.trim()).filter(Boolean);
   if (punctuationParts.length > 1 && punctuationParts.length <= 3) return punctuationParts;
-  const glyphs = [...text];
-  if (glyphs.length <= 10) return [text];
-  const count = glyphs.length > 20 ? 3 : 2;
-  const size = Math.ceil(glyphs.length / count);
-  return Array.from({length:count}, (_, index) => glyphs.slice(index * size, (index + 1) * size).join('')).filter(Boolean);
+  return [text];
 }
 
 function proposedGroupStarts(line, groups) {

@@ -133,35 +133,32 @@ flowchart LR
 
 ## 7. 渲染、封装与可复现性
 
-`run-delivery.mjs` 是唯一正式交付入口。它先运行运行时检查，将 CLI 参数写为 `job.json`，再委派 `render-job.mjs`。后者依序生成：音频画像、歌曲画像、方向、样式方案、时间轴校验、PNG 帧、MP4、成片校验和 manifest。
+`run-delivery.mjs` 是唯一正式交付入口。默认先生成 1280×720/24fps 预览，`--quality final` 才生成 1920×1080/30fps 母版；它将 CLI 参数和所有可复跑侧车写入隐藏 `.cimu/`，把 MP4 单独留在用户交付目录。`render-job.mjs` 依序生成音频画像、歌曲画像、方向、样式方案、时间轴校验、PNG 帧、MP4、成片校验和 manifest。
 
-`render-browser-sample.mjs` 对每一个帧时间调用浏览器的 `window.renderAt(t)`，通过 CDP 截图写入临时 PNG 序列；随后 FFmpeg 使用 H.264、`yuv420p`、CRF 18 与 AAC 192 kb/s 封装原音频目标片段，并设置 fast-start 元数据。Chrome 有独立进程组，端口、启动、截帧和编码阶段均有超时与清理逻辑。
+`render-browser-sample.mjs` 对每一个帧时间调用浏览器的 `window.renderAt(t)`，通过 CDP 截图写入临时 PNG 序列；默认将帧分配给最多四个独立 Chrome worker 并行捕获，随后 FFmpeg 使用 H.264、`yuv420p`、CRF 18 与 AAC 192 kb/s 封装原音频目标片段，并设置 fast-start 元数据。Chrome 有独立进程组，端口、启动、截帧和编码阶段均有超时与清理逻辑。
 
 同一组以下输入应得到可重现的视觉选择：已审阅时间轴、音频范围、视觉 profile、字体/效果 manifest 版本、显式 override 与 seed。要复跑历史订单，应保留这些 sidecar，而不仅保留 MP4。
 
 ## 8. 交付物与验收
 
-正式输出目录至少应包含：
+用户可见的正式输出目录只包含 MP4；以下文件保存在隐藏 `.cimu/` 工作区：
 
 ```text
-master-16x9.mp4
-delivery-validation.json
-delivery-manifest.json
-timeline-validation.json
-style-plan-validation.json
-audio.json
-song-profile.json
-direction.json
-style-plan.json
-job.json
+.cimu/delivery-manifest.json
+.cimu/delivery-validation.json
+.cimu/timeline-validation.json
+.cimu/audio.json
+.cimu/song-profile.json
+.cimu/direction.json
+.cimu/style-plan.json
+.cimu/job.json
 ```
 
-`validate-rendered-mv.mjs` 会核对 H.264/AAC 编码、时长、尺寸及采样帧边缘，阻止黑边/黑缝等明显合成问题。输出 manifest 将这些中间决策与最终成片关联，形成可审计的交付包。
+`validate-rendered-mv.mjs` 会核对 H.264/AAC 编码、时长、尺寸及采样帧边缘，阻止黑边/黑缝等明显合成问题；明确选择纯黑背景时会记录该意图而不将其误判为黑缝。输出 manifest 将这些中间决策与最终成片关联，形成可审计的交付包。
 
 发布验收分两层：
 
-1. `release-check.mjs`：检查 Node 20+、FFmpeg、FFprobe、Chrome/Chromium 与核心自检，适用于独立安装包。
-2. `release-check.mjs --with-goldens`：在维护者本地已有 golden 视频时，验证 20 秒 16:9 H.264/AAC 参考成片及其时间轴、画像、视觉计划和校验侧车。
+`release-check.mjs` 检查 Node 20+、FFmpeg、FFprobe、Chrome/Chromium 与核心自检，适用于独立安装包。渲染后的样片仍需人工抽查。
 
 自动校验不能替代人工观看。完整审阅必须抽查开场、文本最密集处、hook/hero、转场和结尾，并确认文字未被高亮背景、模糊、光效或次级元素遮挡。
 
@@ -169,9 +166,9 @@ job.json
 
 | 需求 | 修改层 | 必要证明 |
 | --- | --- | --- |
-| 新音乐类型或视觉 profile | 歌曲路由、样式规则、背景 manifest、模板映射 | 20–30 秒横版 golden 样片 |
+| 新音乐类型或视觉 profile | 歌曲路由、样式规则、背景 manifest、模板映射 | 固定 seed 的 20–30 秒横版样片 |
 | 新字体 | 本地字体包、字体 manifest、路由规则 | 许可记录与可读性帧检查 |
-| 新动效 | Canvas 效果模块、effects manifest | 固定 seed 短样片与安全阅读区检查 |
+| 新动效 | WebGL stage、effects manifest | 固定 seed 短样片与安全阅读区检查 |
 | 新分组逻辑 | direction / override / timeline validator | 时间轴校验通过 |
 | 更强节拍响应 | 音频画像或模板适配层 | 前后对照帧与人工观看 |
 | 艺术家品牌资产 | timeline/style-plan override 与素材许可记录 | 资产许可和安全区审阅 |

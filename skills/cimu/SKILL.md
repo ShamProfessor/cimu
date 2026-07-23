@@ -9,7 +9,7 @@ Turn local audio and lyrics into a reviewable, reproducible lyric-video delivery
 
 ## Start with the user's request
 
-1. Identify the local audio and lyric inputs already attached or named by the user. Ask only for missing essentials: source audio, lyrics, target range when not the full song, and requested aspect ratio. Default to a 16:9 full-song master.
+1. Identify the local audio and lyric inputs already attached or named by the user. Ask only for missing essentials: source audio, lyrics, target range when not the full song, and requested aspect ratio. Default to a 16:9 review render; make a 1080p master only when the user asks for a final export.
 2. State the short plan in plain language. Do not show Node, FFmpeg, or internal script commands unless the user explicitly asks for developer instructions.
 3. Run `scripts/check-runtime.mjs` from this skill directory. If a required runtime is unavailable, report the exact missing dependency and stop before producing a misleading partial delivery. When Chrome is installed outside the discovered paths, use `LYRIC_MV_CHROME_PATH`.
 
@@ -22,10 +22,10 @@ Turn local audio and lyrics into a reviewable, reproducible lyric-video delivery
 
 ## Render and validate
 
-1. Use `scripts/run-delivery.mjs` after timing is reviewed. Omit the visual-profile override unless the user specifies a visual direction; preserve deterministic routing and generated sidecars.
+1. Use `scripts/run-delivery.mjs` after timing is reviewed. Omit the visual-profile override unless the user specifies a visual direction; keep the technical record in the hidden `.cimu` work folder rather than exposing it as delivery files.
 2. Translate natural-language style requests into `styleIntent`, explicit `sections`, or reviewed line-level `effectPlan` overrides. Respect requested intensity, preferred effects, excluded effects, and scene engine. Never invent an effect ID.
-3. Require `style-plan-validation.json` to pass before pixel rendering. Unknown, phase-mismatched, excluded, or unsupported effects must block delivery rather than silently degrade.
-4. Use 1920×1080 at 30 fps for the default landscape master. Produce 9:16 only when explicitly requested and review its safe area independently.
+3. Require StylePlan validation to pass before pixel rendering. Unknown, phase-mismatched, excluded, or unsupported effects must block delivery rather than silently degrade.
+4. Use the 1280×720/24fps preview preset for first review; use 1920×1080/30fps only for an explicitly requested landscape master. Produce 9:16 only when explicitly requested and review its safe area independently.
 5. Do not call a preview delivered. Verify timeline and rendered-video checks, then inspect the opening, a dense lyric section, a hook or hero line, a transition, and the ending at delivery resolution.
 6. Report the exported MP4, output directory, aspect ratio, duration, timing-review status, and any remaining limitation in plain language.
 
@@ -39,4 +39,4 @@ Turn local audio and lyrics into a reviewable, reproducible lyric-video delivery
 
 ## Maintain the skill
 
-Run `scripts/release-check.mjs` before distributing an edited skill. In a maintainer checkout with locally rendered golden videos, run the deeper regression check with `scripts/release-check.mjs --with-goldens`. These are maintainer checks, not user instructions.
+Run `scripts/release-check.mjs` before distributing an edited skill. This checks the portable runtime and core contracts; a rendered sample still requires human visual review. These are maintainer checks, not user instructions.

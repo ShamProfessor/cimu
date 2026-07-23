@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {
   EFFECT_PHASES,
@@ -114,14 +114,20 @@ function fontPlan(profile) {
 function preferredBackground(profile, engine) {
   const engineCandidates = backgroundManifest.backgrounds.filter((background) => background.status === 'ready' && background.sceneEngine === engine);
   const profileCandidates = engineCandidates.filter((background) => background.profiles.includes(profile));
-  return profileCandidates.length ? choose(profileCandidates) : engineCandidates.length ? choose(engineCandidates) : null;
+  return profileCandidates.length ? choose(profileCandidates) : null;
 }
 
 const profile = timeline.visualProfile ?? songProfile?.visualProfile ?? (timeline.musicProfile?.genre?.includes('ballad') ? 'ballad-editorial' : 'concrete-anthem');
 const lines = timeline.lines ?? timeline.lyrics ?? [];
 const userIntent = normalizeStyleIntent(timeline);
 const sceneEngine = userIntent.sceneEngine ?? sceneEngineForProfile(profile);
-const background = timeline.backgroundPlan ?? preferredBackground(profile, sceneEngine)?.id ?? null;
+const backgroundImage = timeline.generatedBackground?.path ?? timeline.backgroundImage ?? null;
+if (backgroundImage && !existsSync(resolve(backgroundImage))) throw new Error(`Generated background image is missing: ${resolve(backgroundImage)}`);
+if (userIntent.backgroundMode === 'provided' && !backgroundImage) throw new Error('styleIntent.backgroundMode=provided requires generatedBackground.path or backgroundImage.');
+const requestedBackground = userIntent.backgroundMode === 'black' ? 'solid-black' : timeline.backgroundPlan ?? preferredBackground(profile, sceneEngine)?.id ?? 'solid-black';
+const background = requestedBackground;
+const backgroundMode = background === 'solid-black' ? 'black' : userIntent.backgroundMode;
+const backgroundDefinition = backgroundManifest.backgrounds.find((entry) => entry.id === background);
 const template = timeline.template ?? 'webgl-lyric-stage';
 const rule = profileRules[profile] ?? {prefer:[], block:[]};
 const excludedEffects = new Set([...rule.block, ...userIntent.excludedEffects]);
@@ -140,11 +146,10 @@ function compatible(effect, phase, role) {
     && !excludedEffects.has(effect.id);
 }
 
-function effectFor(phase, role, previousBuild, importance, intensityOverride = null) {
+function effectFor(phase, role, importance, intensityOverride = null) {
   const maximumIntensity = userIntent.animationIntensity ?? intensityOverride ?? (importance === 5 ? 5 : 3);
   const options = effectManifest.effects
     .filter((effect) => compatible(effect, phase, role))
-    .filter((effect) => phase !== 'build' || effect.id !== previousBuild)
     .filter((effect) => effect.intensity <= maximumIntensity);
   const preferred = options.filter((effect) => preferredEffects.has(effect.id));
   return (preferred.length ? choose(preferred) : options.length ? choose(options) : null)?.id ?? null;
@@ -155,13 +160,12 @@ const sections = resolveSections(timeline, {
   background,
   engineForBackground: (id) => backgroundManifest.backgrounds.find((entry) => entry.id === id)?.sceneEngine ?? null,
   transitionFor: (role) => role === 'chorus'
-    ? effectFor('transition', 'hook', null, 5, 5)
+    ? effectFor('transition', 'hook', 5, 5)
     : role === 'verse'
-      ? effectFor('transition', 'verse', null, 3, 2)
+      ? effectFor('transition', 'verse', 3, 2)
       : null
 });
 
-let previousBuild = null;
 const heroCounts = new Map();
 const resolvedLines = lines.map((line, index) => {
   const role = line.role ?? 'verse';
@@ -179,13 +183,12 @@ const resolvedLines = lines.map((line, index) => {
   const heroCount = heroCounts.get(bucket) ?? 0;
   const isHero = importance === 5 && heroCount < effectManifest.selectionRules.maxHeroLinesPer30Seconds;
   if (isHero) heroCounts.set(bucket, heroCount + 1);
-  const build = override.build ?? effectFor('build', role, previousBuild, importance, section?.intensity);
-  previousBuild = build ?? previousBuild;
-  const breathe = override.breathe ?? effectFor('breathe', role, null, importance, section?.intensity);
-  const resolveEffect = override.resolve ?? effectFor('resolve', role, null, importance, section?.intensity);
+  const build = override.build ?? effectFor('build', role, importance, section?.intensity);
+  const breathe = override.breathe ?? effectFor('breathe', role, importance, section?.intensity);
+  const resolveEffect = override.resolve ?? effectFor('resolve', role, importance, section?.intensity);
   const isSectionOpening = section && index === lines.findIndex((candidate) => sectionForLine(sections, candidate)?.id === section.id);
   const transition = lineOverride.transition ?? (isSectionOpening ? section.transition : null);
-  const overlay = override.overlay ?? (isHero ? effectFor('overlay', role, null, importance, section?.intensity) : 'grain-plate');
+  const overlay = override.overlay ?? (isHero ? effectFor('overlay', role, importance, section?.intensity) : 'grain-plate');
   return {
     index,
     start:line.start,
@@ -220,6 +223,9 @@ const result = {
   musicProfile:timeline.musicProfile ?? songProfile?.musicProfile ?? null,
   fontPlan:fontPlan(profile),
   background,
+  backgroundMode,
+  backgroundImage:backgroundImage ? resolve(backgroundImage) : null,
+  safeZone:backgroundDefinition?.safeZone ?? 'center',
   template,
   sceneEngine,
   sections,

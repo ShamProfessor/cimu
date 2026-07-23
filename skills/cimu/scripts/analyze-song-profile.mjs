@@ -17,8 +17,21 @@ const has = (expression) => expression.test(text);
 const average = (key) => audio?.frames?.length ? audio.frames.reduce((sum, frame) => sum + Number(frame[key] ?? 0), 0) / audio.frames.length : null;
 const rms = average('rms');
 const bass = average('bass');
-let genre = genreOverride;
+const genreAliases = new Map([
+  ['rap', 'rap'], ['hiphop', 'rap'], ['hip-hop', 'rap'], ['hip hop', 'rap'], ['说唱', 'rap'],
+  ['folk', 'folk'], ['民谣', 'folk'],
+  ['rock', 'rock'], ['摇滚', 'rock'],
+  ['pop', 'pop'], ['流行', 'pop']
+]);
+function normalizeGenre(value) {
+  const source = String(value ?? '').trim().toLocaleLowerCase();
+  const normalized = genreAliases.get(source);
+  if (!normalized) throw new Error(`Unknown --genre: ${value}. Use rap, hiphop, folk, rock, or pop.`);
+  return normalized;
+}
+let genre = genreOverride ? normalizeGenre(genreOverride) : null;
 const reasons = [];
+if (genreOverride && genre !== String(genreOverride).trim().toLocaleLowerCase()) reasons.push(`genre override normalized to ${genre}`);
 if (!genre) {
   if (has(/flow|verse|hook|punchline|freestyle|说唱|押韵|代码|赌|筹码|赌场/i)) { genre = 'rap'; reasons.push('lyric vocabulary suggests rhythmic delivery'); }
   else if (has(/成都|城市|街头|小城|故乡|夏天|秋天|九月|路|酒|垂柳|民谣/)) { genre = 'folk'; reasons.push('lyric imagery suggests narrative folk writing'); }

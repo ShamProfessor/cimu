@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "title": "Don't touch my code",
+  "durationSeconds": 3,
+  "review": {"required": false},
+  "styleIntent": {"backgroundMode": "black"},
+  "lines": [
+    {
+      "start": 0,
+      "end": 1,
+      "text": "Don't touch my code",
+      "groups": ["Don't touch", "my code"],
+      "groupStarts": [0.1, 0.45],
+      "role": "hook",
+      "importance": 5
+    },
+    {
+      "start": 1,
+      "end": 3,
+      "text": "我们代表新一代那种高级商贩",
+      "groups": ["我们代表", "新一代", "那种高级商贩"],
+      "groupStarts": [0.1, 0.8, 1.6],
+      "role": "punchline",
+      "importance": 5
+    }
+  ]
+}

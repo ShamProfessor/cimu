@@ -3,39 +3,35 @@ import {existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync}
 import {basename, dirname, resolve} from 'node:path';
 import {spawn, spawnSync} from 'node:child_process';
 import {createServer} from 'node:net';
+import {cpus} from 'node:os';
 import {findChrome} from './runtime.mjs';
 
 const assetDirectory = resolve(dirname(new URL(import.meta.url).pathname), '../assets');
-const defaultTemplate = resolve(assetDirectory, 'kinetic-code-grid.html');
+const defaultTemplate = resolve(assetDirectory, 'webgl-hiphop-hook.html');
 const templates = {
-  'rap-adaptive-collage': resolve(assetDirectory, 'rap-adaptive-collage.html'),
-  'hiphop-editorial-collage': resolve(assetDirectory, 'hiphop-editorial-collage.html'),
   'webgl-hiphop-hook': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
   'webgl-hiphop-editorial': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
   'webgl-lyric-stage': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
   'webgl-folk-lyric-stage': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
   'webgl-pop-memory-stage': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
   'webgl-rock-stage': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
-  'webgl-rock-indie-stage': resolve(assetDirectory, 'webgl-hiphop-hook.html'),
-  'folk-city-walk-lyric': resolve(assetDirectory, 'folk-city-walk-lyric.html'),
-  'folk-letterpress-lyric': resolve(assetDirectory, 'folk-letterpress-lyric.html'),
-  'ballad-cover-lyric': resolve(assetDirectory, 'ballad-cover-lyric.html')
+  'webgl-rock-indie-stage': resolve(assetDirectory, 'webgl-hiphop-hook.html')
 };
 
 function parseArgs(argv) {
-  const values = {start: 0, from: 0, duration: 30, timelineDuration: null, width: 1280, height: 720, fps: 30, port: null, startupTimeout: 30, renderTimeout: 360, encodeTimeout: 240};
+  const values = {start: 0, from: 0, duration: 30, timelineDuration: null, width: 1280, height: 720, fps: 30, port: null, startupTimeout: 30, renderTimeout: 360, encodeTimeout: 240, workers:'auto', workerIndex:0, workerCount:1, framesDir:null, skipEncode:false};
   for (let i = 2; i < argv.length; i += 1) {
     const key = argv[i];
     if (!key.startsWith('--')) continue;
+    if (key === '--skip-encode') { values.skipEncode = true; continue; }
     const name = key.slice(2);
     const next = argv[i + 1];
     if (!next || next.startsWith('--')) throw new Error(`Missing value for ${key}`);
-    const normalized = {'timeline-duration':'timelineDuration', 'startup-timeout':'startupTimeout', 'render-timeout':'renderTimeout', 'encode-timeout':'encodeTimeout'}[name] ?? name;
-    if (!['audio', 'audio-data', 'lrc', 'timeline', 'style-plan', 'template', 'out', 'chrome', 'start', 'from', 'duration', 'timelineDuration', 'width', 'height', 'fps', 'port', 'startupTimeout', 'renderTimeout', 'encodeTimeout'].includes(normalized)) {
+    const normalized = {'timeline-duration':'timelineDuration', 'startup-timeout':'startupTimeout', 'render-timeout':'renderTimeout', 'encode-timeout':'encodeTimeout', 'worker-index':'workerIndex', 'worker-count':'workerCount', 'frames-dir':'framesDir'}[name] ?? name;
+    if (!['audio', 'audio-data', 'lrc', 'timeline', 'style-plan', 'template', 'out', 'chrome', 'start', 'from', 'duration', 'timelineDuration', 'width', 'height', 'fps', 'port', 'startupTimeout', 'renderTimeout', 'encodeTimeout', 'workers', 'workerIndex', 'workerCount', 'framesDir'].includes(normalized)) {
       throw new Error(`Unknown option: ${key}`);
     }
-    values[normalized] = ['start', 'from', 'duration', 'timelineDuration', 'width', 'height', 'fps', 'port'].includes(normalized) ? Number(next) : next;
-    if (['startupTimeout', 'renderTimeout', 'encodeTimeout'].includes(normalized)) values[normalized] = Number(next);
+    values[normalized] = ['start', 'from', 'duration', 'timelineDuration', 'width', 'height', 'fps', 'port', 'startupTimeout', 'renderTimeout', 'encodeTimeout', 'workerIndex', 'workerCount'].includes(normalized) ? Number(next) : next;
     i += 1;
   }
   for (const key of ['audio', 'out']) if (!values[key]) throw new Error(`Required option: --${key}`);
@@ -43,6 +39,9 @@ function parseArgs(argv) {
   if (values.timelineDuration === null) values.timelineDuration = values.duration;
   if (values.from < 0 || values.duration <= 0 || values.timelineDuration <= 0 || values.width <= 0 || values.height <= 0 || values.fps <= 0 || !Number.isFinite(values.startupTimeout) || values.startupTimeout <= 0 || !Number.isFinite(values.renderTimeout) || values.renderTimeout <= 0 || !Number.isFinite(values.encodeTimeout) || values.encodeTimeout <= 0) throw new Error('from, duration, dimensions, fps, and timeout values must be valid positive values.');
   if (values.port !== null && (!Number.isInteger(values.port) || values.port < 0 || values.port > 65535)) throw new Error('--port must be an integer from 0 to 65535.');
+  values.workers = values.workers === 'auto' ? Math.max(1, Math.min(4, cpus().length || 1)) : Number(values.workers);
+  if (!Number.isInteger(values.workers) || values.workers < 1 || values.workers > 8) throw new Error('--workers must be auto or an integer from 1 to 8.');
+  if (!Number.isInteger(values.workerCount) || values.workerCount < 1 || !Number.isInteger(values.workerIndex) || values.workerIndex < 0 || values.workerIndex >= values.workerCount) throw new Error('Worker index and count are invalid.');
   return values;
 }
 
@@ -133,8 +132,53 @@ function connect(url) {
   return {call, close: () => socket.close()};
 }
 
-async function main() {
-  const config = parseArgs(process.argv);
+function encodeVideo(config, frames, output) {
+  const encode = spawnSync('ffmpeg', [
+    '-hide_banner', '-y', '-framerate', String(config.fps), '-start_number', '0', '-i', `${frames}/frame-%04d.png`,
+    '-ss', String(config.start + config.from), '-t', String(config.duration), '-i', config.audio,
+    '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
+    '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output,
+  ], {stdio: 'inherit', timeout: config.encodeTimeout * 1000, killSignal: 'SIGTERM'});
+  if (encode.error) throw new Error(`FFmpeg encode failed: ${encode.error.message}`);
+  if (encode.status !== 0) throw new Error(`FFmpeg encode failed with status ${encode.status ?? 'unknown'}.`);
+}
+
+function workerArguments(config, frames, workerIndex, workerCount) {
+  const args = [
+    '--audio', config.audio, config.timeline ? '--timeline' : '--lrc', config.timeline ?? config.lrc,
+    '--out', config.out, '--start', String(config.start), '--from', String(config.from), '--duration', String(config.duration), '--timeline-duration', String(config.timelineDuration),
+    '--width', String(config.width), '--height', String(config.height), '--fps', String(config.fps),
+    '--startup-timeout', String(config.startupTimeout), '--render-timeout', String(config.renderTimeout), '--encode-timeout', String(config.encodeTimeout),
+    '--frames-dir', frames, '--worker-index', String(workerIndex), '--worker-count', String(workerCount), '--skip-encode'
+  ];
+  for (const [flag, value] of [['audio-data', config['audio-data']], ['style-plan', config['style-plan']], ['template', config.template], ['chrome', config.chrome]]) if (value) args.push(`--${flag}`, value);
+  return args;
+}
+
+function runWorker(config, frames, workerIndex, workerCount) {
+  return new Promise((resolveWorker, rejectWorker) => {
+    const child = spawn(process.execPath, [process.argv[1], ...workerArguments(config, frames, workerIndex, workerCount)], {stdio:'inherit'});
+    child.once('error', rejectWorker);
+    child.once('exit', (code, signal) => code === 0 ? resolveWorker() : rejectWorker(new Error(`Render worker ${workerIndex + 1}/${workerCount} failed (${code ?? signal ?? 'unknown'}).`)));
+  });
+}
+
+async function renderParallel(config) {
+  if (config.port !== null) throw new Error('--port cannot be combined with parallel workers.');
+  const temporary = mkdtempSync('/private/tmp/cimu-parallel-');
+  const frames = `${temporary}/frames`;
+  mkdirSync(frames);
+  try {
+    console.log(`Capturing ${Math.round(config.duration * config.fps)} frames with ${config.workers} Chrome workers.`);
+    await Promise.all(Array.from({length:config.workers}, (_, workerIndex) => runWorker(config, frames, workerIndex, config.workers)));
+    encodeVideo(config, frames, resolve(config.out));
+    console.log(`Rendered ${resolve(config.out)}`);
+  } finally {
+    rmSync(temporary, {recursive:true, force:true, maxRetries:8, retryDelay:150});
+  }
+}
+
+async function renderWorker(config) {
   const chrome = findChrome({chromePath:config.chrome});
   if (!chrome) throw new Error('Google Chrome or Chromium was not found. Set LYRIC_MV_CHROME_PATH or pass --chrome /path/to/chrome.');
   const timelineDocument = config.timeline ? JSON.parse(readFileSync(config.timeline, 'utf8')) : null;
@@ -162,8 +206,8 @@ async function main() {
   const output = resolve(config.out);
   const temporary = mkdtempSync('/private/tmp/cimu-');
   const profile = `${temporary}/chrome-profile`;
-  const frames = `${temporary}/frames`;
-  mkdirSync(frames);
+  const frames = config.framesDir ? resolve(config.framesDir) : `${temporary}/frames`;
+  mkdirSync(frames, {recursive:true});
   const pageUrl = `file://${template}`;
   const port = config.port || await freePort();
   const needsWebgl = basename(template) === 'webgl-hiphop-hook.html';
@@ -204,7 +248,7 @@ async function main() {
     await cdp.call('Runtime.evaluate', {expression: 'Promise.resolve(window.__assetsReady)', awaitPromise: true});
     const frameCount = Math.round(config.duration * config.fps);
     const renderDeadline = Date.now() + config.renderTimeout * 1000;
-    for (let frame = 0; frame < frameCount; frame += 1) {
+    for (let frame = config.workerIndex; frame < frameCount; frame += config.workerCount) {
       if (Date.now() > renderDeadline) throw new Error(`Frame capture exceeded the ${config.renderTimeout}s render timeout after ${frame}/${frameCount} frames.`);
       const time = config.from + frame / config.fps;
       await cdp.call('Runtime.evaluate', {expression: `window.renderAt(${time.toFixed(6)})`});
@@ -212,15 +256,7 @@ async function main() {
       writeFileSync(`${frames}/frame-${String(frame).padStart(4, '0')}.png`, Buffer.from(shot.data, 'base64'));
     }
     cdp.close();
-    const encode = spawnSync('ffmpeg', [
-      '-hide_banner', '-y', '-framerate', String(config.fps), '-start_number', '0', '-i', `${frames}/frame-%04d.png`,
-      '-ss', String(config.start + config.from), '-t', String(config.duration), '-i', config.audio,
-      '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
-      '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output,
-    ], {stdio: 'inherit', timeout: config.encodeTimeout * 1000, killSignal: 'SIGTERM'});
-    if (encode.error) throw new Error(`FFmpeg encode failed: ${encode.error.message}`);
-    if (encode.status !== 0) throw new Error(`FFmpeg encode failed with status ${encode.status ?? 'unknown'}.`);
-    console.log(`Rendered ${output}`);
+    if (!config.skipEncode) { encodeVideo(config, frames, output); console.log(`Rendered ${output}`); }
   } finally {
     stopBrowser(browser);
     try {
@@ -229,6 +265,12 @@ async function main() {
       console.warn(`Temporary render files kept at ${temporary}: ${cleanupError.message}`);
     }
   }
+}
+
+async function main() {
+  const config = parseArgs(process.argv);
+  if (config.workerCount === 1 && config.workers > 1) await renderParallel(config);
+  else await renderWorker(config);
 }
 
 main().catch((error) => { console.error(error instanceof Error ? error.message : error); process.exit(1); });

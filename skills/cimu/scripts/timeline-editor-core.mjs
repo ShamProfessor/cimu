@@ -11,6 +11,12 @@ export function cleanText(value) {
   return String(value ?? '').replace(/\uFEFF/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// Groups control animation timing only. They must never become a lossy
+// paraphrase of the lyric line; renderers concatenate them verbatim.
+export function normalizeLyricCoverage(value) {
+  return cleanText(value).replace(/\s+/g, '').toLocaleLowerCase();
+}
+
 export function parseTime(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   const text = String(value ?? '').trim();
@@ -154,6 +160,9 @@ export function validateTimeline(timeline, {minimumLineDuration = MIN_LINE_DURAT
     previousEnd = Math.max(previousEnd, Number.isFinite(end) ? end : 0);
     if (!cleanText(line.text)) errors.push({code:'empty-text', line:index, message:`${label} 没有歌词文本。`});
     const groups = line.groups?.length ? line.groups : [line.text];
+    if (normalizeLyricCoverage(groups.join('')) !== normalizeLyricCoverage(line.text)) {
+      errors.push({code:'group-text-coverage', line:index, message:`${label} 的分组没有完整覆盖原歌词。`});
+    }
     const starts = line.groupStarts ?? [];
     if (starts.length && starts.length !== groups.length) errors.push({code:'group-count', line:index, message:`${label} 的分组起点数量不匹配。`});
     starts.forEach((groupStart, groupIndex) => {

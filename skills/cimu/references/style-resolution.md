@@ -13,11 +13,11 @@ The style resolver converts an approved song analysis into one reproducible visu
 ## Resolution stages
 
 1. Resolve one of eight capability-checked scene engines: `editorial-depth`, `heritage-print`, `street-photocopy`, `live-stage`, `indie-night`, `memory-light`, `folk-paper`, or `city-route`.
-2. Select one compatible background. The automatic WebGL route starts with a profile-specific authored procedural material, not the song cover: folk uses paper/landscape or city-trace material, pop uses a soft-focus memory-light material, and rap uses its editorial art plate. A supplied cover is an optional artist-personalization overlay, never the default background. An external AI/AE plate is only selected if its license and lyric-safe zone are recorded.
+2. Select one compatible background. The automatic WebGL route starts with a profile-specific approved material, not the song cover: folk uses paper/landscape or city-trace material, pop uses a soft-focus memory-light material, and rap uses its editorial art plate. If no compatible approved plate exists, it resolves to an intentional solid-black fallback rather than borrowing an unrelated profile. A supplied cover is an optional artist-personalization overlay, never the default background.
 3. Select a font pairing: a primary readable face plus an optional emphasis face. Use any local project font marked `recorded`, including an artist-declared free-commercial font.
 4. Resolve inferred or explicit verse/chorus/outro sections. Each section records its range, scene engine, background, intensity, and optional transition.
 5. Select effect families compatible with the visual profile and user intent. A line receives `build`, `breathe`, and `resolve`; a section may contribute one transition and effect defaults.
-6. Apply constraints: explicit line override > explicit section override > user style intent > profile rules. Do not select excluded effects, repeat adjacent builds, or exceed the requested animation intensity.
+6. Apply constraints: explicit line override > explicit section override > user style intent > profile rules. Do not select excluded effects or exceed the requested animation intensity. Consecutive phrases may intentionally reuse an effect when that improves phrase continuity; variation belongs at section and emphasis boundaries, not as a forced per-line rule.
 7. Persist the resulting `stylePlan` beside the timeline and validate it against the renderer capability contract. Rendering only consumes a passing plan; rerunning with the same seed produces the same choices.
 
 ## Profile routing

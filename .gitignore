@@ -16,3 +16,5 @@ test/*
 !test/fixtures/**
 !test/timeline-editor-core.test.mjs
 !test/style-plan-core.test.mjs
+
+deliveries/

@@ -14,7 +14,7 @@ Cimu 是一个 Agent Skill。你只需提供素材并描述成片要求，Agent 
 - 本地 WebGL + Canvas 渲染，不依赖在线生成服务。
 - 输出 H.264/AAC MP4，并保留时间轴、视觉方案和验收记录。
 
-默认交付为完整歌曲的 1920×1080、30fps 横版母版。
+默认先交付 1280×720、24fps 的横版预览；确认歌词、构图和风格后，再按需导出 1920×1080、30fps 横版母版。
 
 ## 安装
 
@@ -130,16 +130,16 @@ Agent 会在本机启动编辑器并打开浏览器。编辑器只运行在 `127
 
 ## 输入与默认规则
 
-| 项目 | 支持或默认值 |
-| --- | --- |
-| 音频 | MP3、M4A、AAC |
-| 歌词 | LRC、SRT、ASS、UTF-8 纯文本 |
-| 范围 | 默认完整歌曲，也可指定起止时间、时长、段落或歌词句 |
-| 画幅 | 默认 16:9；可指定 9:16 |
-| 分辨率 | 默认 1920×1080 |
-| 帧率 | 默认 30fps |
-| 成片 | H.264 视频 + AAC 音频 |
-| 背景 | 默认使用内置程序化场景 |
+| 项目   | 支持或默认值                                       |
+| ------ | -------------------------------------------------- |
+| 音频   | MP3、M4A、AAC                                      |
+| 歌词   | LRC、SRT、ASS、UTF-8 纯文本                        |
+| 范围   | 默认完整歌曲，也可指定起止时间、时长、段落或歌词句 |
+| 画幅   | 默认 16:9；可指定 9:16                             |
+| 分辨率 | 默认 1280×720 预览；正式版为 1920×1080             |
+| 帧率   | 默认 24fps 预览；正式版为 30fps                    |
+| 成片   | H.264 视频 + AAC 音频                              |
+| 背景   | 默认使用内置程序化场景                             |
 
 推荐使用带可靠时间码的 LRC、SRT 或 ASS。源音频和歌词不会被覆盖。
 
@@ -156,20 +156,14 @@ Agent 会在本机启动编辑器并打开浏览器。编辑器只运行在 `127
 
 ## 交付内容
 
-每次正式交付至少包含：
+交付目录只放用户需要的视频：
 
 ```text
-master-16x9.mp4            横版成片；竖版为 master-9x16.mp4
-delivery-validation.json  成片验收结果
-delivery-manifest.json    交付文件清单
-timeline-validation.json  歌词时间轴验收结果
-style-plan-validation.json
-audio.json
-song-profile.json
-direction.json
-style-plan.json
-job.json
+preview-16x9.mp4          默认横版预览
+# 或：master-16x9.mp4     明确要求正式版时生成
 ```
+
+渲染参数、时间轴、样式计划和验收报告会放在同目录下的隐藏 `.cimu/` 文件夹，仅用于复跑或排障；普通用户无需打开或理解它们。
 
 建议按歌曲和片段保存：
 
@@ -177,10 +171,11 @@ job.json
 song-project/
   source/                 原始音频和歌词
   work/                   已审核时间轴与人工调整
-  delivery/song-range/    MP4 与全部交付文件
+  delivery/song-range/    用户可直接使用的 MP4
+    .cimu/                隐藏的复跑与排障记录
 ```
 
-保留完整交付目录，后续可修改歌词、时间、风格或画幅后重新生成。
+保留交付目录即可；需要修改歌词、时间、风格或画幅时，Agent 会在隐藏工作记录的基础上重新生成。
 
 ## 参考样片
 
@@ -195,12 +190,6 @@ song-project/
 
 ```bash
 node skills/cimu/scripts/release-check.mjs
-```
-
-本地已生成参考成片时，可运行完整检查：
-
-```bash
-node skills/cimu/scripts/release-check.mjs --with-goldens
 ```
 
 命令、参数、时间轴编辑器和排障说明见 [开发文档](docs/DEVELOPMENT.md)。

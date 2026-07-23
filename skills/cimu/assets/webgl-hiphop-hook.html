@@ -7,9 +7,12 @@
       @font-face { font-family: 'MV YouShe'; src: url('../fonts/youshetitle/优设标题黑.ttf') format('truetype'); font-display:block; }
       @font-face { font-family: 'MV Zhenyan'; src: url('../fonts/zhenyan/锐字真言体.ttf') format('truetype'); font-display:block; }
       @font-face { font-family: 'MV Qingke'; src: url('../fonts/hiphop-qingkehuangyou/ZCOOLQingKeHuangYou-Regular.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV Alliance'; src: url('../fonts/lianmengqiyi/联盟起艺卢帅正锐黑体.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV ZhanKu Cool'; src: url('../fonts/zhankukuhei/站酷酷黑体.ttf') format('truetype'); font-display:block; }
+      @font-face { font-family: 'MV ZhiMang'; src: url('../fonts/rap-zhimangxing/ZhiMangXing-Regular.ttf') format('truetype'); font-display:block; }
       @font-face { font-family: 'MV Literary'; src: url('../fonts/zhankuwenyi/站酷文艺体.ttf') format('truetype'); font-display:block; }
       @font-face { font-family: 'MV Mashan'; src: url('../fonts/ballad-mashanzheng/MaShanZheng-Regular.ttf') format('truetype'); font-display:block; }
-      html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#171310; }
+      html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#000; }
       canvas { position:absolute; inset:0; width:100%; height:100%; } img { display:none; }
     </style>
   </head>
@@ -81,7 +84,8 @@
       }
       function audioAt(time) { const data=window.__TIMELINE_META.audioData, frames=data?.frames??[], fps=Number(data?.fps)||30; if(!frames.length)return {rms:0,bass:0,mid:0,treble:0,beat:false}; const frame=frames[Math.max(0,Math.min(frames.length-1,Math.floor(time*fps)))]; const nearest=(data.beats??[]).some((beat)=>Math.abs(beat-time)<=.055); return {...frame,beat:nearest}; }
       function styleLine(line) { return line ? (window.__TIMELINE_META.stylePlan?.lines??[]).find((entry)=>entry.index===line.index)??{} : {}; }
-      function fontFamily(kind='primary') { const plan=window.__TIMELINE_META.stylePlan?.fontPlan??{}, id=plan[kind]??plan.primary; return ({zhenyan:'MV Zhenyan',qingkehuangyou:'MV Qingke','zhanku-literary':'MV Literary',mashanzheng:'MV Mashan'})[id]??'MV YouShe'; }
+      function blackBackground() { return window.__TIMELINE_META.stylePlan?.backgroundMode === 'black'; }
+      function fontFamily(kind='primary') { const plan=window.__TIMELINE_META.stylePlan?.fontPlan??{}, id=plan[kind]??plan.primary; return ({'youshe-title':'MV YouShe',zhenyan:'MV Zhenyan',qingkehuangyou:'MV Qingke','lianmeng-qiyi':'MV Alliance','zhanku-cool-black':'MV ZhanKu Cool',zhimangxing:'MV ZhiMang','zhanku-literary':'MV Literary',mashanzheng:'MV Mashan'})[id]??'MV YouShe'; }
 
       if (!gl) throw new Error('WebGL is unavailable for this hook study.');
       const vertexSource = `
@@ -164,19 +168,42 @@
         return C;
       }
       function drawPlane(m, tint, uv, fade) { gl.uniformMatrix4fv(locations.uModel, false, m); gl.uniform4fv(locations.uTint, tint); gl.uniform4fv(locations.uUvRect, uv); gl.uniform1f(locations.uDepthFade, fade); gl.drawArrays(gl.TRIANGLES, 0, 6); }
+      const identity = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+      function drawFullPlate() {
+        // A supplied 16:9 image is a composition, not a texture crop. Draw it
+        // once in screen space before the depth cards so the complete artwork is
+        // retained even while the foreground camera moves.
+        if (!plate.complete || !plate.naturalWidth || !plate.naturalHeight) return;
+        const outputAspect=glCanvas.width/glCanvas.height;
+        const imageAspect=plate.naturalWidth/plate.naturalHeight;
+        const width=outputAspect>imageAspect ? 2 : 2*outputAspect/imageAspect;
+        const height=outputAspect>imageAspect ? 2*imageAspect/outputAspect : 2;
+        gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false);
+        gl.uniformMatrix4fv(locations.uProjection,false,identity);
+        gl.uniformMatrix4fv(locations.uView,false,identity);
+        drawPlane(model(0,0,0,width,height),[1,1,1,1],[0,0,1,1],1);
+        gl.depthMask(true);
+        gl.enable(gl.DEPTH_TEST);
+      }
       function drawWorld(time, line, profileScene) {
         const hero = line && (line.role === 'hook' || line.role === 'punchline' || line.role === 'declaration');
         const local = line ? time - line.start : time;
         const audio=audioAt(time), drive=Math.min(1, audio.rms*.46+audio.bass*.54);
-        applySceneMaterial(window.__TIMELINE_META.stylePlan?.profile??'rap-editorial',profileScene.engine);
         const W=glCanvas.width, H=glCanvas.height; gl.viewport(0,0,W,H);
+        if (blackBackground()) { gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); return; }
+        applySceneMaterial(window.__TIMELINE_META.stylePlan?.profile??'rap-editorial',profileScene.engine);
         // The far material must overscan the camera frustum: it is a continuous world floor,
         // not a framed card. The matching clear color also prevents a black flash on resize.
         gl.clearColor(profileScene.clear[0],profileScene.clear[1],profileScene.clear[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
         gl.uniformMatrix4fv(locations.uProjection, false, perspective(1.02, W/H, .1, 40));
         const eye=[Math.sin(time*.22)*profileScene.camera*(1+drive*.24), .05+Math.cos(time*.18)*profileScene.camera*.46, 6.52-Math.sin(time*.19)*.22-(hero ? local*.25 : 0)-drive*(hero?.18:.06)]; gl.uniformMatrix4fv(locations.uView, false, lookAt(eye,[.35+Math.sin(time*.13)*.13,0,-3.1]));
-        // Overscan aggressively so the world material fills wide, portrait, and moving-camera crops.
-        drawPlane(model(.35+Math.sin(time*.11)*.14,Math.cos(time*.09)*.08,-13.5,110,70,Math.sin(time*.08)*.012), profileScene.paper, [0,0,1,1], 1);
+        if(profileScene.engine==='editorial-depth') drawFullPlate();
+        gl.uniformMatrix4fv(locations.uProjection, false, perspective(1.02, W/H, .1, 40));
+        gl.uniformMatrix4fv(locations.uView, false, lookAt(eye,[.35+Math.sin(time*.13)*.13,0,-3.1]));
+        // Procedural materials are intentionally oversized; external image plates
+        // are already drawn at their full declared composition above.
+        if(profileScene.engine!=='editorial-depth') drawPlane(model(.35+Math.sin(time*.11)*.14,Math.cos(time*.09)*.08,-13.5,110,70,Math.sin(time*.08)*.012), profileScene.paper, [0,0,1,1], 1);
         const cards=[];
         const cardCount = hero ? profileScene.cards + 16 + Math.round(drive*4) : profileScene.cards;
         for (let i=0;i<cardCount;i+=1) { const seed=i*31, velocity=(hero ? (.52+hash(seed*2)*.42) : (profileScene.speed+hash(seed*2)*profileScene.speed*.72))*(1+drive*.18); cards.push({i, z:3.3-hash(seed)*13.1+time*velocity, x:1.15+(hash(seed*3)-.5)*6.4+Math.sin(time*(.11+hash(seed*29)*.12)+seed)*.17, y:(hash(seed*5)-.5)*3.95+Math.cos(time*(.10+hash(seed*31)*.12)+seed)*.11, w:(hero ? .82 : .62)+hash(seed*7)*(hero ? 1.86 : 1.12), h:(hero ? .50 : .38)+hash(seed*11)*(hero ? 1.30 : .80), r:(hash(seed*13)-.5)*.72, u:.38+hash(seed*17)*.4, v:hash(seed*19)*.48}); }
@@ -197,14 +224,16 @@
         fx.clearRect(0,0,1920,H);
         fx.globalCompositeOperation='screen';
 
-        const phase=time*(hero?.78:.31);
-        const x=hero?1180+Math.sin(phase)*330:1480+Math.sin(phase)*190;
-        const y=hero?H*.34:H*.18;
-        const flare=fx.createRadialGradient(x,y,0,x,y,(hero?520:340)*(1+pulse*.28));
-        flare.addColorStop(0,`rgba(${Math.round(profileScene.accent[0]*255)},${Math.round(profileScene.accent[1]*255)},${Math.round(profileScene.accent[2]*255)},${(hero?.18:.075)+pulse*.08})`);
-        flare.addColorStop(1,'rgba(255,255,255,0)');
-        fx.fillStyle=flare;
-        fx.fillRect(0,0,1920,H);
+        if (!blackBackground()) {
+          const phase=time*(hero?.78:.31);
+          const x=hero?1180+Math.sin(phase)*330:1480+Math.sin(phase)*190;
+          const y=hero?H*.34:H*.18;
+          const flare=fx.createRadialGradient(x,y,0,x,y,(hero?520:340)*(1+pulse*.28));
+          flare.addColorStop(0,`rgba(${Math.round(profileScene.accent[0]*255)},${Math.round(profileScene.accent[1]*255)},${Math.round(profileScene.accent[2]*255)},${(hero?.18:.075)+pulse*.08})`);
+          flare.addColorStop(1,'rgba(255,255,255,0)');
+          fx.fillStyle=flare;
+          fx.fillRect(0,0,1920,H);
+        }
 
         if(plan.overlay==='grain-plate'){
           fx.globalCompositeOperation='source-over';
@@ -280,29 +309,33 @@
         text.setTransform(unit,0,0,unit,0,0);
         text.clearRect(0,0,1920,H);
         const primary=fontFamily(), emphasis=fontFamily('emphasis');
-        text.fillStyle=profileScene.paperCss;
-        text.globalAlpha=.62;
-        text.font=`500 22px "${primary}", sans-serif`;
-        text.fillText('LYRIC SPACE / LIVE TAKE',92,92);
-        text.globalAlpha=1;
         if (!line) return;
         const hero=line.role==='hook'||line.role==='punchline'||line.role==='declaration';
-        const groups=line.groups?.length?line.groups.slice(0,3):[line.text];
+        const groups=line.groups?.length?line.groups:[line.text];
         const starts=groupStarts(line);
         const plan=styleLine(line);
         const audio=audioAt(time);
         const exit=clamp((line.end-time)/.24);
+        const safeZone=window.__TIMELINE_META.stylePlan?.safeZone??'center';
+        // Background safe zones may choose a vertical lane, but never make the
+        // lyric lane appear accidentally left- or right-aligned in landscape.
+        const anchorX=960;
+        const lower=safeZone==='center-lower';
+        const baseYs=groups.length===1?[H*(lower?.65:.56)]:groups.length===2?[H*(lower?.54:.45),H*(lower?.74:.67)]:groups.map((_,index)=>H*((lower?.46:.34)+(index/(groups.length-1))*(lower?.37:.44)));
+        const groupOffsets=groups.map(()=>0);
         groups.forEach((word,index)=>{
           if(!word||time<starts[index])return;
           const p=ease((time-starts[index])/.24);
           const entering=1-p;
           const leaving=1-exit;
-          const baseY=[H*.40,H*.57,H*.72][Math.min(index,2)];
-          const baseX=[112,270,145][Math.min(index,2)];
-          let size=hero&&index===0?208:index===1?154:176;
+          const baseY=baseYs[index];
+          const baseX=anchorX+(groupOffsets[index]??0);
+          const densityScale=groups.length>3?Math.max(.68,1-(groups.length-3)*.08):1;
+          let size=(hero&&index===0?208:index===1?154:176)*densityScale;
           const family=index===1&&window.__TIMELINE_META.stylePlan?.fontPlan?.emphasis?emphasis:primary;
           text.font=`700 ${size}px "${family}", sans-serif`;
-          while(text.measureText(word).width>920&&size>62){size-=4;text.font=`700 ${size}px "${family}", sans-serif`;}
+          const maxWidth=1320;
+          while(text.measureText(word).width>maxWidth&&size>62){size-=4;text.font=`700 ${size}px "${family}", sans-serif`;}
           const measured=text.measureText(word).width;
           const build=plan.build??'clip-wipe';
           const resolve=plan.resolve??'none';
@@ -325,11 +358,12 @@
           text.translate(baseX+drift,baseY+rise);
           text.rotate(rotation);
           text.scale(scale,scale);
+          text.textAlign='center'; text.textBaseline='middle';
           if(build==='clip-wipe'){
-            text.beginPath();text.rect(-18,-size*1.2,(measured+36)*p,size*1.65);text.clip();
+            text.beginPath();text.rect(-measured/2-18,-size*1.2,(measured+36)*p,size*1.65);text.clip();
           }
           if(resolve==='paper-rip'&&leaving>0){
-            text.beginPath();text.rect(-20,-size*1.3,(measured+40)*exit+hash(index*31)*24,size*1.8);text.clip();
+            text.beginPath();text.rect(-measured/2-20,-size*1.3,(measured+40)*exit+hash(index*31)*24,size*1.8);text.clip();
           }
           text.font=`700 ${size}px "${family}", sans-serif`;
           if(plan.transition==='focus-pull'&&time-line.start<.42)text.filter=`blur(${(1-ease((time-line.start)/.42))*12}px)`;
@@ -341,14 +375,16 @@
             text.globalAlpha=alpha*.45;text.fillStyle='#39D7FF';text.fillText(word,-22*leaving,0);
             text.fillStyle='#FF385C';text.fillText(word,22*leaving,0);
           }
+          const useAccent=index===1 && !['ballad-editorial','pop-memory-release','folk-letterpress','folk-city-walk'].includes(window.__TIMELINE_META.stylePlan?.profile);
+          const lyricColor=useAccent?profileScene.accentCss:profileScene.paperCss;
           text.globalAlpha=alpha*.58;
-          text.fillStyle=profileScene.accentCss;
+          text.fillStyle=useAccent?profileScene.accentCss:profileScene.paperCss;
           text.fillText(word,18,11);
           text.globalAlpha=alpha;
           text.shadowColor=resolve==='chromatic-whip'?profileScene.accentCss:'rgba(6,4,3,.85)';
           text.shadowBlur=breathe==='halo-pulse'?18+audio.treble*22:18;
           text.shadowOffsetY=9;
-          text.fillStyle=index===1?profileScene.accentCss:profileScene.paperCss;
+          text.fillStyle=lyricColor;
           text.fillText(word,0,0);
           text.restore();
         });
@@ -357,6 +393,15 @@
       window.loadTimelineAssets=(meta)=>{
         const profile=meta.stylePlan?.profile??'rap-editorial';
         const engine=meta.stylePlan?.sceneEngine??'editorial-depth';
+        const externalImage=meta.stylePlan?.backgroundImage;
+        if(externalImage){
+          const source=/^[a-z]+:/i.test(externalImage)?externalImage:`file://${externalImage}`;
+          if(plate.src!==source){
+            activeMaterialEngine=null;
+            plate.src=source;
+            return new Promise((done)=>{plate.addEventListener('load',()=>{applySceneMaterial(profile,engine);done();},{once:true});plate.addEventListener('error',done,{once:true});});
+          }
+        }
         if(engine!=='editorial-depth'){applySceneMaterial(profile,engine);return Promise.resolve();}
         return plate.complete&&plate.naturalWidth?(applySceneMaterial(profile,engine),Promise.resolve()):new Promise((done)=>{plate.addEventListener('load',()=>{applySceneMaterial(profile,engine);done();},{once:true});plate.addEventListener('error',done,{once:true});});
       };

@@ -7,6 +7,7 @@ function option(name, fallback = null) { const index=process.argv.indexOf(`--${n
 const input=option('input'), timelinePath=option('timeline'), output=option('out');
 if(!input||!timelinePath) throw new Error('Usage: validate-rendered-mv.mjs --input output.mp4 --timeline direction.json [--fps 30] [--width pixels] [--height pixels] [--out report.json]');
 const fps=Number(option('fps','30')), timeline=JSON.parse(readFileSync(resolve(timelinePath),'utf8'));
+const allowBlackBackground=process.argv.includes('--allow-black-background');
 const expectedWidth=Number(option('width','0')), expectedHeight=Number(option('height','0'));
 const probe=spawnSync('ffprobe',['-v','error','-show_entries','format=duration:stream=codec_type,codec_name,width,height','-of','json',resolve(input)],{encoding:'utf8'});
 if(probe.status!==0) throw new Error(probe.stderr||'ffprobe failed');
@@ -20,6 +21,6 @@ const temporary=mkdtempSync('/private/tmp/rap-mv-qa-'); const samples=[.15,.5,.8
 try {
   for(const ratio of samples){const raw=spawnSync('ffmpeg',['-v','error','-ss',String(Math.max(0,duration*ratio)),'-i',resolve(input),'-frames:v','1','-f','rawvideo','-pix_fmt','rgb24','pipe:1'],{encoding:null,maxBuffer:64*1024*1024});if(raw.status!==0){warnings.push({code:'frame-probe-failed',ratio});continue;}const bytes=raw.stdout,w=video.width,h=video.height;let dark=0,total=0;for(let y=0;y<h;y+=1)for(let x=0;x<w;x+=1){if(x>2&&x<w-3&&y>2&&y<h-3)continue;const offset=(y*w+x)*3,luma=(bytes[offset]+bytes[offset+1]+bytes[offset+2])/3;dark+=luma<10?1:0;total+=1;}edges.push({ratio,darkEdgeRatio:Number((dark/total).toFixed(4))});}
 } finally { rmSync(temporary,{recursive:true,force:true}); }
-if(edges.some((entry)=>entry.darkEdgeRatio>.94)) errors.push({code:'black-edge-seam',samples:edges});
-const report={schemaVersion:1,input:resolve(input),timeline:resolve(timelinePath),duration:Number(duration.toFixed(3)),dimensions:{width:video?.width??null,height:video?.height??null},edgeSamples:edges,errors,warnings,passed:errors.length===0};
+if(!allowBlackBackground&&edges.some((entry)=>entry.darkEdgeRatio>.94)) errors.push({code:'black-edge-seam',samples:edges});
+const report={schemaVersion:1,input:resolve(input),timeline:resolve(timelinePath),duration:Number(duration.toFixed(3)),dimensions:{width:video?.width??null,height:video?.height??null},intentionalBlackBackground:allowBlackBackground,edgeSamples:edges,errors,warnings,passed:errors.length===0};
 if(output){mkdirSync(dirname(resolve(output)),{recursive:true});writeFileSync(resolve(output),JSON.stringify(report,null,2));} console.log(JSON.stringify(report,null,2)); if(errors.length)process.exit(1);
