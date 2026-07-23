@@ -185,15 +185,9 @@ song-project/
 ## 参考样片
 
 `Don't Touch My Code` 的 20 秒横版示例（18.93s–38.93s，1280×720、30fps）：
-
-GitHub README 不支持直接嵌入 YouTube 播放器。点击下方预览图即可在 YouTube 播放：
+点击下方预览图播放：
 
 [![观看 Cimu 20 秒参考样片](docs/images/cimu-youtube-demo.jpg)](https://www.youtube.com/watch?v=DbYPYUO8kFM)
-
-**[▶ 在 YouTube 观看完整样片](https://www.youtube.com/watch?v=DbYPYUO8kFM)**
-- [查看时间轴](examples/dont-touch-my-code/20s-sample/timeline.json)
-- [查看视觉方案](examples/dont-touch-my-code/20s-sample/delivery/style-plan.json)
-- [查看成片验收](examples/dont-touch-my-code/20s-sample/delivery/delivery-validation.json)
 
 ## 维护与开发
 
