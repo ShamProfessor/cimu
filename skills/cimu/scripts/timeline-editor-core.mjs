@@ -127,7 +127,7 @@ export function buildTimeline({contents, format, title = null, sourceName = null
     cover: null,
     sourceStartSeconds:Number(sourceStartSeconds) || 0,
     durationSeconds:Number(inferredDuration.toFixed(3)),
-    lyricSource:{kind, path:sourceName, alignment:null, timingStatus:format === 'plain-text' ? 'draft-no-alignment' : `timed-${format}`},
+    lyricSource:{kind, path:sourceName, timingStatus:format === 'plain-text' ? 'draft-manual-timing' : `timed-${format}`},
     review:{required:format === 'plain-text', reason:format === 'plain-text' ? '纯文本歌词需要人工填写并复核时间。' : null},
     lines:sourceRows
   };

@@ -86,7 +86,7 @@ node scripts/serve-timeline-editor.mjs
 4. 标记为已审核并导出新的 `.reviewed.json`。
 5. 用 `validate-lyric-timeline.mjs` 再检查一次，再运行 `run-delivery.mjs`。
 
-刷新页面后编辑器会恢复本地歌词草稿，但浏览器不会恢复用户选择的音频文件；请重新选择音频。纯文本自动分配的时间与在线 ASR 输出均只是草稿，不可直接交付。
+刷新页面后编辑器会恢复本地歌词草稿，但浏览器不会恢复用户选择的音频文件；请重新选择音频。纯文本自动分配的时间只是草稿，不可直接交付。
 
 ## 5. 交付包说明
 
@@ -97,6 +97,7 @@ master-16x9.mp4             最终横版成片
 delivery-validation.json    编码、时长、尺寸与黑边检查结果
 delivery-manifest.json      成片与侧车文件关联清单
 timeline-validation.json    歌词时间轴校验结果
+style-plan-validation.json  场景、段落、效果与渲染能力校验
 audio.json                  音频画像
 song-profile.json           歌曲与视觉路由证据
 direction.json              句子角色和重要度建议
@@ -108,12 +109,13 @@ job.json                    本次渲染的参数快照
 
 ## 6. 人工创意控制
 
-默认自动路线会将 WebGL 舞台用于全部 profile，并保持歌词在清晰的一条阅读通道内。要进行刻意调整，请遵循下列优先级：
+默认自动路线会从8个场景引擎中选择一个，并保持歌词在清晰的一条阅读通道内。要进行刻意调整，请遵循下列优先级：
 
 1. 在时间轴中设置明确的字体、背景或效果计划；
 2. 使用 `references/manual-overrides.md` 的格式创建有记录的人工覆盖；
-3. 仅在需要实验或回退时以 `--template` 指定 Canvas 模板；
-4. 重新生成并审阅 `style-plan.json`，确认覆盖确实被保留。
+3. 通过 `styleIntent` 指定强度、偏好效果、禁止效果、调色板或场景引擎；
+4. 通过显式 `sections` 调整主歌、副歌和结尾的视觉强度；
+5. 重新生成并审阅 `style-plan.json` 和 `style-plan-validation.json`，确认覆盖确实被保留。
 
 请阅读 `references/style-resolution.md` 理解确定性选择规则，阅读 `references/creative-direction.md` 理解 hero、hook、punchline 的建议语义。人工覆盖应服务于歌曲表达，不应用于把每一句都做成高强度特效。
 
@@ -125,7 +127,7 @@ job.json                    本次渲染的参数快照
 node scripts/release-check.mjs
 ```
 
-在源项目中检查随仓库发布的 20 秒参考成片时运行：
+本地已生成 20 秒参考成片时运行：
 
 ```bash
 node scripts/release-check.mjs --with-goldens
@@ -148,7 +150,7 @@ node scripts/release-check.mjs --with-goldens
 | --- | --- | --- |
 | `check-runtime` 找不到 Chrome | 路径不在自动发现范围 | 设置 `LYRIC_MV_CHROME_PATH` 后重试 |
 | 时间轴验证失败 | 草稿未审阅、行重叠、越界或最终组停留不足 | 在编辑器/审核稿中修正，再执行验证 |
-| 纯文本可渲染但无法交付 | `draft-no-alignment` 被正确阻断 | 逐句校时并标记审核，或导入可靠 LRC/SRT/ASS |
+| 纯文本可渲染但无法交付 | `draft-manual-timing` 被正确阻断 | 逐句校时并标记审核，或导入可靠 LRC/SRT/ASS |
 | 输出出现黑边或黑缝 | 背景/尺寸/渲染异常 | 检查 `delivery-validation.json`，使用默认 WebGL 路线重新渲染 |
 | 样式每次变化 | 侧车文件没有被保留或手工覆盖未落盘 | 保留并复用 `style-plan.json`、timeline 和 override |
 | 音频重新加载后编辑器失去文件 | 浏览器安全限制 | 刷新后重新选择本地音频，草稿内容会保留 |
@@ -172,4 +174,3 @@ project/
 - `input-contract.md`：时间轴、job 与交付门禁的精确 JSON 合同。
 - `timeline-editor.md`：本地时间轴编辑器的详细行为。
 - `manual-overrides.md`：有意偏离自动方案时的记录格式。
-- `online-asr.md`：可选 ASR sidecar 的接入边界与审阅规则。

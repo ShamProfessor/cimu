@@ -10,15 +10,15 @@
   "edgeSamples": [
     {
       "ratio": 0.15,
-      "darkEdgeRatio": 0.0188
+      "darkEdgeRatio": 0.0176
     },
     {
       "ratio": 0.5,
-      "darkEdgeRatio": 0.0231
+      "darkEdgeRatio": 0.0211
     },
     {
       "ratio": 0.85,
-      "darkEdgeRatio": 0.0218
+      "darkEdgeRatio": 0.0225
     }
   ],
   "errors": [],

@@ -38,7 +38,7 @@ AI may propose the following fields. A creator approves or edits the high-import
 }
 ```
 
-Do not fabricate word timestamps. `emphasis` is semantic markup; animate it at word level only when the input includes word timing or an approved alignment pass.
+Do not fabricate word timestamps. `emphasis` is semantic markup; animate it at word level only when the reviewed input includes word timing.
 
 `scripts/propose-lyric-direction.mjs` provides a deterministic baseline for line `role` and `importance`: repeated lines become hook candidates, punctuation and explicit technical/punchline vocabulary become punchline candidates, and no more than three lines per run receive `importance: 5`. It never overrides artist-supplied `role`, `importance`, `groups`, or `effectPlan`. `--regroup` is an explicit opt-in that replaces only an ingest-generated single-line group with a review-required visual-phrase proposal.
 

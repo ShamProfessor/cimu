@@ -10,6 +10,7 @@
         "songProfile": "delivery/song-profile.json",
         "direction": "delivery/direction.json",
         "stylePlan": "delivery/style-plan.json",
+        "stylePlanValidation": "delivery/style-plan-validation.json",
         "validation": "delivery/timeline-validation.json",
         "deliveryValidation": "delivery/delivery-validation.json",
         "manifest": "delivery/delivery-manifest.json"

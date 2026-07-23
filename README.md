@@ -1,15 +1,20 @@
 # Cimu（词幕）
 
-把本地音频和歌词做成可审阅、可复跑的歌词 MV。Cimu 是一个 Agent Skill：你提供素材和想要的成片，Agent 负责时间轴、视觉方案、渲染与验收，不要求你操作 JSON 或渲染命令。
+把本地音频和歌词制作成可审阅、可复跑的歌词 MV。
 
-## 它做什么
+Cimu 是一个 Agent Skill。你只需提供素材并描述成片要求，Agent 会完成歌词时间轴、视觉方案、渲染和验收，无需手动编辑 JSON 或执行渲染命令。
 
-- 接收 MP3/M4A/AAC 音频和 LRC、SRT、ASS 或纯文本歌词。
-- 将已带时间码的歌词转为统一时间轴；纯文本必须先在本地编辑器逐句审核。
-- 根据歌词与音频生成确定性的视觉方案，并保存在 `style-plan.json`，方便修改后复跑。
-- 导出横版或竖版 MP4，以及时间轴、音频画像、视觉方案和成片校验报告。
+## 主要能力
 
-默认交付是完整歌曲的 1920×1080、30 fps 横版母版。需要片段或 9:16 时，在请求里直接说明。
+- 支持 MP3、M4A、AAC 音频。
+- 支持 LRC、SRT、ASS 和纯文本歌词。
+- 支持完整歌曲、指定时间段、主歌、副歌或某句歌词。
+- 支持 16:9 横版和 9:16 竖版。
+- 可用自然语言指定风格、颜色、动画强度、重点句和禁止效果。
+- 本地 WebGL + Canvas 渲染，不依赖在线生成服务。
+- 输出 H.264/AAC MP4，并保留时间轴、视觉方案和验收记录。
+
+默认交付为完整歌曲的 1920×1080、30fps 横版母版。
 
 ## 安装
 
@@ -17,70 +22,174 @@
 npx skills add https://github.com/ShamProfessor/cimu --skill cimu -g
 ```
 
-安装完成后，重新开启或继续一个 Agent 对话即可使用 `cimu`。
+本机需要：
 
-## 怎么用
+- Node.js 20+
+- FFmpeg 和 FFprobe
+- Google Chrome 或 Chromium
 
-把音频和歌词附到对话里，然后直接描述结果：
+安装后，在 Agent 对话中直接调用 `cimu`。运行环境会在渲染前自动检查。
+
+## 快速开始
+
+上传音频和歌词，或提供它们的本地绝对路径：
 
 ```text
-用 cimu 把这个 MP3 和 LRC 做成 20 秒、16:9 的歌词 MV；从第一句主歌开始，视觉用代码与工业拼贴感。
+用 cimu 制作歌词 MV。
+音频：/Users/me/music/song/source/song.mp3
+歌词：/Users/me/music/song/source/song.lrc
+输出到：/Users/me/music/song/delivery
+```
+
+也可以直接上传音频并粘贴歌词。若目录中有多个版本，请明确指定使用哪一个文件。
+
+## 常用用法
+
+### 完整歌曲
+
+```text
+用 cimu 制作完整歌曲的 16:9 歌词 MV，使用默认视觉方案。
+```
+
+### 指定时间片段
+
+```text
+制作一条 20 秒、16:9 的歌词 MV，从 00:18.930 开始。
 ```
 
 ```text
-用 cimu 做一条 9:16 的歌词视频；我只有音频和纯文本歌词，先让我审核每一句的时间。
+只做第一段副歌，从“我不会回头”开始，到下一段主歌前结束。
+```
+
+时间范围会同时用于歌词和音频裁切。段落边界不明确时，Agent 会先确认识别出的歌词与时间。
+
+### 竖版版本
+
+```text
+先做完整歌曲的横版母版，再适配一条 15 秒、9:16 的副歌版。
+```
+
+横版和竖版会分别检查断行、构图与安全区。
+
+### 指定整体风格
+
+```text
+城市夜景、独立电影片头感，整体克制，字体偏文学。
+副歌比主歌更强，但不要霓虹、RGB 分离和闪白。
 ```
 
 ```text
-用 cimu 检查这份 LRC 的错词、重叠和错拍；修好后渲染完整横版 MV。
+使用纸张和旧印刷质感，暖色，镜头缓慢。
+“成都，带不走的只有你”作为重点句，其余句子保持安静。
 ```
 
-Agent 只会追问必要信息：音频、歌词、片段范围和画幅。带时间码的歌词会进入校验；纯文本会停在时间轴编辑器，直到逐句审核完成，才会渲染交付。
+可指定：
 
-## 输入与交付
+- 视觉气质、场景、字体倾向和调色板；
+- 整体或分段动画强度；
+- 主歌、副歌、结尾的不同表现；
+- 某一句的入场、保持和出场方式；
+- 重点句、强调词、分组和禁止效果。
 
-| 项目 | 内容 |
+明确提出的要求优先于自动方案，最终选择会写入 `style-plan.json`，便于复跑。
+
+### 使用自己的背景
+
+可以提供封面、照片或视频，并说明使用范围、裁切方式和字幕安全区。
+
+未提供背景时，Cimu 会从内置场景中选择合适方向，包括编辑拼贴、传统印刷、街头复印、摇滚舞台、独立夜景、流行柔光、民谣纸张和城市路线。
+
+Cimu 默认不会搜索网络素材，也不会在线生成 AI 背景。
+
+### 只有纯文本歌词
+
+```text
+音频已上传，下面是纯文本歌词。请先帮我逐句校时，确认后再生成完整横版 MV。
+```
+
+纯文本会先生成时间草稿，并在本地时间轴编辑器中逐句审核。未经审核的自动时间不能作为正式交付。
+
+## 输入与默认规则
+
+| 项目 | 支持或默认值 |
 | --- | --- |
 | 音频 | MP3、M4A、AAC |
-| 歌词 | LRC、SRT、ASS；或 UTF-8 纯文本 |
-| 成片 | `master-16x9.mp4`（请求竖版时为对应竖版成片） |
-| 可复跑侧车 | `timeline`、`audio.json`、`song-profile.json`、`direction.json`、`style-plan.json`、`job.json` |
-| 验收 | `timeline-validation.json` 与 `delivery-validation.json` |
+| 歌词 | LRC、SRT、ASS、UTF-8 纯文本 |
+| 范围 | 默认完整歌曲，也可指定起止时间、时长、段落或歌词句 |
+| 画幅 | 默认 16:9；可指定 9:16 |
+| 分辨率 | 默认 1920×1080 |
+| 帧率 | 默认 30fps |
+| 成片 | H.264 视频 + AAC 音频 |
+| 背景 | 默认使用内置程序化场景 |
 
-## 技术方案
+推荐使用带可靠时间码的 LRC、SRT 或 ASS。源音频和歌词不会被覆盖。
 
-```mermaid
-flowchart LR
-  A[音频 + 歌词] --> B[统一时间轴]
-  B --> C{时间已审核?}
-  C -- 否 --> D[本地时间轴编辑器]
-  D --> C
-  C -- 是 --> E[音频画像 + 歌词方向]
-  E --> F[确定性样式计划]
-  F --> G[Chrome 逐帧渲染]
-  G --> H[FFmpeg 封装 MP4]
-  H --> I[时间轴与成片校验]
+## 制作流程
+
+1. 检查素材、范围、画幅和运行环境。
+2. 整理并验证歌词时间轴。
+3. 分析歌曲与歌词段落，生成视觉方案。
+4. 校验场景、动画和用户限制。
+5. 本地逐帧渲染并封装 MP4。
+6. 检查尺寸、时长、编码、音频、黑边和关键画面。
+
+自动检查通过后，仍会人工查看开场、密集歌词、重点句、转场和结尾。
+
+## 交付内容
+
+每次正式交付至少包含：
+
+```text
+master-16x9.mp4            横版成片；竖版为 master-9x16.mp4
+delivery-validation.json  成片验收结果
+delivery-manifest.json    交付文件清单
+timeline-validation.json  歌词时间轴验收结果
+style-plan-validation.json
+audio.json
+song-profile.json
+direction.json
+style-plan.json
+job.json
 ```
 
-关键不是“自动套一个字幕模板”：歌词先被规范化为可校验的时间轴；视觉选择由歌曲画像和固定 seed 生成，并写入侧车文件；最终通过 FFprobe、黑边检查和关键段人工观看共同验收。修改歌词、时间或视觉方向后，可以从侧车文件定位并重新渲染。
+建议按歌曲和片段保存：
 
-本机渲染需要 Node.js 20+、FFmpeg/FFprobe 与 Google Chrome 或 Chromium。首次执行时，Agent 会检查这些组件并明确报告缺少项。
+```text
+song-project/
+  source/                 原始音频和歌词
+  work/                   已审核时间轴与人工调整
+  delivery/song-range/    MP4 与全部交付文件
+```
 
-## 20 秒可下载示例
+保留完整交付目录，后续可修改歌词、时间、风格或画幅后重新生成。
 
-仓库包含 `Don't Touch My Code` 的 20 秒横版示例（18.93s–38.93s，1280×720、30 fps）：
+## 参考样片
 
-![示例第 5 秒画面](examples/dont-touch-my-code/20s-sample/preview-5s.png)
+`Don't Touch My Code` 的 20 秒横版示例（18.93s–38.93s，1280×720、30fps）：
 
-- [下载示例 MP4](examples/dont-touch-my-code/20s-sample/delivery/master-16x9.mp4)
+[![观看 Cimu 20 秒参考样片](https://img.youtube.com/vi/DbYPYUO8kFM/maxresdefault.jpg)](https://www.youtube.com/watch?v=DbYPYUO8kFM)
+
+- [在 YouTube 观看完整样片](https://www.youtube.com/watch?v=DbYPYUO8kFM)
 - [查看时间轴](examples/dont-touch-my-code/20s-sample/timeline.json)
 - [查看视觉方案](examples/dont-touch-my-code/20s-sample/delivery/style-plan.json)
-- [查看成片校验报告](examples/dont-touch-my-code/20s-sample/delivery/delivery-validation.json)
+- [查看成片验收](examples/dont-touch-my-code/20s-sample/delivery/delivery-validation.json)
 
-## 验收与维护
+## 维护与开发
 
-每次交付都会校验时间轴、编码、尺寸、时长与黑边，并应人工观看开场、密集歌词、hook、转场和结尾。仓库随附的 20 秒示例及全部侧车文件可用于发布检查；维护说明见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+普通发布检查：
+
+```bash
+node skills/cimu/scripts/release-check.mjs
+```
+
+本地已生成参考成片时，可运行完整检查：
+
+```bash
+node skills/cimu/scripts/release-check.mjs --with-goldens
+```
+
+命令、参数、时间轴编辑器和排障说明见 [开发文档](docs/DEVELOPMENT.md)。
 
 ## 许可证
 
-源代码与文档采用 [MIT License](LICENSE)。
+[MIT License](LICENSE)

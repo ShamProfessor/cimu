@@ -2,6 +2,7 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {validateStylePlan} from './style-plan-core.mjs';
 
 function option(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -12,7 +13,10 @@ const manifestPath = option('manifest');
 if (!manifestPath) throw new Error('Usage: validate-golden-clips.mjs --manifest golden-clips.json');
 const resolvedManifestPath = resolve(manifestPath);
 const manifestDirectory = dirname(resolvedManifestPath);
+const skillRoot = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const manifest = JSON.parse(readFileSync(resolvedManifestPath, 'utf8'));
+const effectManifest = JSON.parse(readFileSync(resolve(skillRoot, 'manifests/effects.json'), 'utf8'));
+const backgroundManifest = JSON.parse(readFileSync(resolve(skillRoot, 'manifests/backgrounds.json'), 'utf8'));
 if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.clips)) throw new Error('Golden-clip manifest must declare schemaVersion: 1 and a clips array.');
 
 function resolveManifestPath(path) { return resolve(manifestDirectory, path); }
@@ -38,6 +42,10 @@ for (const clip of manifest.clips) {
   const plan = readJson(clip.artifacts.stylePlan);
   if (plan.profile !== clip.profile) errors.push({clip:label, code:'profile-mismatch', expected:clip.profile, actual:plan.profile});
   if (!plan.template) errors.push({clip:label, code:'missing-template'});
+  const direction = readJson(clip.artifacts.direction);
+  const liveStyleValidation = validateStylePlan(plan, {timeline:direction, effectManifest, backgroundManifest});
+  if (!liveStyleValidation.passed) errors.push({clip:label, code:'style-plan-validation-failed', details:liveStyleValidation.errors});
+  if (clip.artifacts.stylePlanValidation && !readJson(clip.artifacts.stylePlanValidation).passed) errors.push({clip:label, code:'stored-style-plan-validation-failed'});
   for (const [name, expected] of Object.entries(clip.outputs ?? {})) {
     if (!existsSync(resolveManifestPath(expected.path))) { errors.push({clip:label, code:'missing-output', output:name, path:expected.path}); continue; }
     const metadata = probe(expected.path);

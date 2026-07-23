@@ -5,14 +5,16 @@ import {spawnSync} from 'node:child_process';
 
 function option(name, fallback = null) { const index=process.argv.indexOf(`--${name}`); return index===-1?fallback:process.argv[index+1]; }
 const input=option('input'), timelinePath=option('timeline'), output=option('out');
-if(!input||!timelinePath) throw new Error('Usage: validate-rendered-mv.mjs --input output.mp4 --timeline direction.json [--fps 30] [--out report.json]');
+if(!input||!timelinePath) throw new Error('Usage: validate-rendered-mv.mjs --input output.mp4 --timeline direction.json [--fps 30] [--width pixels] [--height pixels] [--out report.json]');
 const fps=Number(option('fps','30')), timeline=JSON.parse(readFileSync(resolve(timelinePath),'utf8'));
+const expectedWidth=Number(option('width','0')), expectedHeight=Number(option('height','0'));
 const probe=spawnSync('ffprobe',['-v','error','-show_entries','format=duration:stream=codec_type,codec_name,width,height','-of','json',resolve(input)],{encoding:'utf8'});
 if(probe.status!==0) throw new Error(probe.stderr||'ffprobe failed');
 const info=JSON.parse(probe.stdout), video=info.streams.find((stream)=>stream.codec_type==='video'), audio=info.streams.find((stream)=>stream.codec_type==='audio'), duration=Number(info.format.duration);
 const errors=[], warnings=[];
 if(video?.codec_name!=='h264'||audio?.codec_name!=='aac') errors.push({code:'codec',video:video?.codec_name??null,audio:audio?.codec_name??null});
 if(!video?.width||!video?.height) errors.push({code:'missing-video-dimensions'});
+if(expectedWidth>0&&expectedHeight>0&&(video?.width!==expectedWidth||video?.height!==expectedHeight)) errors.push({code:'dimension-mismatch',expected:{width:expectedWidth,height:expectedHeight},actual:{width:video?.width??null,height:video?.height??null}});
 if(Math.abs(duration-Number(timeline.durationSeconds))>1/fps+.05) errors.push({code:'duration-drift',expected:timeline.durationSeconds,actual:Number(duration.toFixed(3))});
 const temporary=mkdtempSync('/private/tmp/rap-mv-qa-'); const samples=[.15,.5,.85]; const edges=[];
 try {

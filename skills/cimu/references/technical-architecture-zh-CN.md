@@ -10,7 +10,7 @@ Cimu（词幕）是一个**本地优先、可审阅、可复现**的歌词视觉
 - 不依赖云端生成视频、Whisper、React、Remotion、Three.js 或托管服务。
 - 原始歌词不可被流程覆写；时间事实、创意决策和渲染结果必须分层保存。
 - 自动创意必须由 seed 固化，显式人工覆盖必须优先于自动选择。
-- 未审阅的纯文本或 ASR 对齐只能生成草稿，不能绕过交付校验。
+- 未审阅的纯文本只能生成草稿，不能绕过交付校验。
 
 ## 2. 运行时边界
 
@@ -23,9 +23,8 @@ Cimu（词幕）是一个**本地优先、可审阅、可复现**的歌词视觉
 | 图形渲染 | 原生 WebGL + Canvas | 背景深度、光效、动效字体与安全阅读区 | 是 |
 | 帧捕获 | Headless Chrome + CDP | 逐帧调用 `renderAt(t)`，截取 PNG | 是 |
 | 封装与验收 | FFmpeg + Node 校验器 | H.264/AAC 封装、采样边缘检查、清单生成 | 是 |
-| 在线 ASR | Tencent Flash adapter | 仅产生对齐草稿；凭据由调用方提供 | 否 |
 
-系统不会隐式调用在线服务。ASR 适配器已实现但默认未启用；AI 生成背景、AE/Lottie 与 Remotion 均是可替换的未来/外部能力，而非本发布版依赖。
+系统不会隐式调用在线服务。AI 生成背景、AE/Lottie 与 Remotion 均是可替换的未来/外部能力，而非本发布版依赖。
 
 ## 3. 总体数据流
 
@@ -33,15 +32,15 @@ Cimu（词幕）是一个**本地优先、可审阅、可复现**的歌词视觉
 flowchart LR
   A[音频 MP3/M4A/AAC] --> B[extract-audio-profile]
   C[LRC/SRT/ASS/纯文本] --> D[build-lyric-timeline]
-  E[可选 ASR sidecar] --> D
   D --> F[审阅时间轴 timeline]
   B --> G[analyze-song-profile]
   F --> G
   G --> H[propose-lyric-direction]
   H --> I[resolve-style-plan]
   J[字体/效果/背景 manifests] --> I
+  I --> Q[validate-style-plan]
   F --> K[validate-lyric-timeline]
-  I --> K
+  Q --> K
   K --> L[render-job]
   B --> L
   L --> M[Chrome CDP 截帧]
@@ -55,9 +54,9 @@ flowchart LR
 1. **时间层**只回答“哪句歌词在何时出现”；它不保存临时效果选择。
 2. **分析层**从歌词与音频提取可解释的路由证据，不直接控制每一帧。
 3. **方向层**提出可编辑的句子角色和重要度，保留人工审阅标记。
-4. **样式层**将创意选择固化为可重放的 `style-plan.json`。
+4. **样式层**将用户意图、段落、场景和逐句创意选择固化为可重放的 `style-plan.json`。
 5. **渲染层**只消费已固定的输入；不在浏览器内重新随机选择效果。
-6. **验收层**独立判断时间轴与成片是否合格，不以“能渲染”代替“可交付”。
+6. **验收层**先验证 StylePlan 是否仅使用渲染器真实支持的能力，再独立判断时间轴与成片是否合格，不以“能渲染”代替“可交付”。
 
 ## 4. 规范化时间轴与状态机
 
@@ -82,11 +81,9 @@ flowchart LR
 | --- | --- | --- | --- |
 | LRC | `timed-lrc` | 已有行级时间 | 可以，仍须通过校验 |
 | SRT / ASS | 对应的原生时间码状态 | 已有区间 | 可以，仍须通过校验 |
-| 纯文本 + 已批准 sidecar | `alignment-backed` | 需确认匹配准确性 | 审阅后可以 |
-| 纯文本 | `draft-no-alignment` | 草稿 | 不可以 |
-| 在线 ASR sidecar | 草稿对齐状态 | 草稿 | 不可以，必须人工核对 |
+| 纯文本 | `draft-manual-timing` | 草稿 | 不可以 |
 
-`validate-lyric-timeline.mjs` 会阻止空文本、负值、越界、行重叠、分组顺序错误、最终组停留时间不足、未审阅草稿与低置信度对齐。这个阻断发生在像素渲染之前。
+`validate-lyric-timeline.mjs` 会阻止空文本、负值、越界、行重叠、分组顺序错误、最终组停留时间不足与未审阅草稿。这个阻断发生在像素渲染之前。
 
 ## 5. 创意决策链
 
@@ -104,17 +101,19 @@ flowchart LR
 
 ### 5.4 确定性样式方案
 
-`resolve-style-plan.mjs` 汇总时间轴、歌曲画像和三份 manifest：
+`resolve-style-plan.mjs` 汇总用户 `styleIntent`、显式或推断段落、歌曲画像和三份 manifest：
 
 - `manifests/fonts.json`：本地字体、文件路径、许可记录和路由偏好；
 - `manifests/effects.json`：build / breathe / resolve / transition / overlay 效果约束；
 - `manifests/backgrounds.json`：背景、母题和 profile 映射。
 
-解析器以稳定 seed 生成 `style-plan.json`，并执行相邻行不重复 build、30 秒最多三条 hero、hero 转场仅用于高重要度文本、最小可读停留等规则。优先级从高到低为：**时间轴显式覆盖 > 手工 override > 样式解析器 > profile 默认值**。
+解析器以稳定 seed 生成 schema v2 `style-plan.json`。它记录用户原始意图、全局场景、段落范围与强度、逐句效果以及 capability contract，并执行相邻行不重复 build、每30秒最多三条 hero、段落转场、用户禁止项和动画强度等规则。优先级从高到低为：**逐句显式覆盖 > 段落覆盖 > 用户 styleIntent > profile 规则 > 自动选择**。
+
+`validate-style-plan.mjs` 会阻止未知效果、阶段错配、模板未实现效果、用户明确禁止的效果、无效段落范围、未知场景引擎和不可交付背景。渲染器不会静默忽略 StylePlan。
 
 ## 6. 图形与合成架构
 
-自动路径由 `assets/webgl-hiphop-hook.html` 的共享运行时承载，并按 profile 使用不同的 `SCENES` 参数：调色板、卡片密度、纵深、运动速度和镜头幅度不同。原生 WebGL 以 Chrome SwiftShader 软件后端保证环境一致性，Canvas 模板仍可作为明确指定的人工回退方案。
+自动路径由 `assets/webgl-hiphop-hook.html` 的共享运行时承载，并提供8个视觉结构不同、能力合同一致的场景引擎：编辑拼贴、传统印刷、街头复印、摇滚舞台、独立夜景、回忆柔光、民谣纸张和城市路线。各引擎使用独立材质构造、卡片密度、纵深、运动速度和镜头幅度。原生 WebGL 以 Chrome SwiftShader 软件后端保证环境一致性；未声明 capability contract 的旧 Canvas 模板不进入自动交付路径。
 
 固定层级必须保持不变：
 
@@ -149,6 +148,7 @@ master-16x9.mp4
 delivery-validation.json
 delivery-manifest.json
 timeline-validation.json
+style-plan-validation.json
 audio.json
 song-profile.json
 direction.json
@@ -161,7 +161,7 @@ job.json
 发布验收分两层：
 
 1. `release-check.mjs`：检查 Node 20+、FFmpeg、FFprobe、Chrome/Chromium 与核心自检，适用于独立安装包。
-2. `release-check.mjs --with-goldens`：验证随源仓库发布的 20 秒 16:9 H.264/AAC 参考成片及其时间轴、画像、视觉计划和校验侧车。
+2. `release-check.mjs --with-goldens`：在维护者本地已有 golden 视频时，验证 20 秒 16:9 H.264/AAC 参考成片及其时间轴、画像、视觉计划和校验侧车。
 
 自动校验不能替代人工观看。完整审阅必须抽查开场、文本最密集处、hook/hero、转场和结尾，并确认文字未被高亮背景、模糊、光效或次级元素遮挡。
 
@@ -183,11 +183,10 @@ job.json
 
 - 所有输入均使用绝对路径；原始音频和歌词文件只读使用。
 - 本地编辑器只绑定 `127.0.0.1`，不暴露局域网端口。
-- 外部 ASR 凭据不写入时间轴、style plan 或 delivery manifest。
 - 临时帧放入系统临时目录，由渲染器清理；正式输出仅写入用户指定的 `--out`。
 - Chrome 缺失时，通过 `LYRIC_MV_CHROME_PATH` 显式指定，不应偷换成不兼容浏览器。
 - 失败时优先保留已有 JSON 侧车文件和校验报告，从失败阶段重新执行；不要用手动替换 MP4 掩盖失败。
 
 ## 11. 当前成熟度
 
-当前版本已覆盖“音频 + 已审阅行级歌词 → 确定性视觉模板 → 可验证 MP4”的本地生产路径。它尚不是托管式自助产品：多人审阅、资产管理、分布式队列、授权素材市场和在线 ASR 运营仍是上层产品能力。任何未来迁移都应保留本时间轴合同、确定性样式方案与独立验证器，避免把可复现的本地引擎退化为不可审计的黑盒渲染服务。
+当前版本已覆盖“音频 + 已审阅行级歌词 → 确定性视觉模板 → 可验证 MP4”的本地生产路径。它尚不是托管式自助产品：多人审阅、资产管理、分布式队列和授权素材市场仍是上层产品能力。任何未来迁移都应保留本时间轴合同、确定性样式方案与独立验证器，避免把可复现的本地引擎退化为不可审计的黑盒渲染服务。

@@ -30,7 +30,7 @@ for (const entry of overrides.lines ?? []) {
   lines[entry.index] = {...current, ...patch};
 }
 
-const allowedTimelineFields = new Set(['title', 'visualProfile', 'template', 'backgroundPlan', 'fontPlan', 'musicProfile']);
+const allowedTimelineFields = new Set(['title', 'visualProfile', 'template', 'backgroundPlan', 'fontPlan', 'musicProfile', 'styleIntent', 'sections', 'styleSeed']);
 const timelinePatch = overrides.timeline ?? {};
 for (const key of Object.keys(timelinePatch)) if (!allowedTimelineFields.has(key)) throw new Error(`Overrides has unsupported timeline field: ${key}`);
 

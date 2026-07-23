@@ -16,12 +16,18 @@ const run = (script, args) => {
 run('check-runtime.mjs', []);
 
 const timeline = JSON.parse(readFileSync(resolve(timelinePath), 'utf8'));
+const requestedStart = optionalNumber('start');
+const requestedDuration = optionalNumber('duration');
+const timelineStart = Number(timeline.sourceStartSeconds ?? 0);
+const timelineDuration = Number(timeline.durationSeconds);
+if (requestedStart !== null && Math.abs(requestedStart - timelineStart) > .001) throw new Error(`--start ${requestedStart} does not match timeline sourceStartSeconds ${timelineStart}. Rebuild the timeline for the requested range.`);
+if (requestedDuration !== null && Math.abs(requestedDuration - timelineDuration) > .001) throw new Error(`--duration ${requestedDuration} does not match timeline durationSeconds ${timelineDuration}. Rebuild the timeline for the requested range.`);
 const job = {
   schemaVersion:1,
   audio:resolve(audio),
   timeline:resolve(timelinePath),
-  sourceStartSeconds:optionalNumber('start') ?? Number(timeline.sourceStartSeconds ?? 0),
-  durationSeconds:optionalNumber('duration') ?? Number(timeline.durationSeconds),
+  sourceStartSeconds:requestedStart ?? timelineStart,
+  durationSeconds:requestedDuration ?? timelineDuration,
   width:optionalNumber('width') ?? 1920,
   height:optionalNumber('height') ?? 1080,
   fps:optionalNumber('fps') ?? 30

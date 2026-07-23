@@ -12,11 +12,13 @@ The style resolver converts an approved song analysis into one reproducible visu
 
 ## Resolution stages
 
-1. Select one compatible background. The automatic WebGL route starts with a profile-specific authored procedural material, not the song cover: folk uses paper/landscape or city-trace material, pop uses a soft-focus memory-light material, and rap uses its editorial art plate. A supplied cover is an optional artist-personalization overlay, never the default background. An external AI/AE plate is only selected if its license and lyric-safe zone are recorded.
-2. Select a font pairing: a primary readable face plus an optional emphasis face. Use any local project font marked `recorded`, including an artist-declared free-commercial font.
-3. Select effect families compatible with the visual profile. A line receives `build`, `breathe`, and `resolve`; a section may receive one transition and one overlay.
-4. Apply constraints: no duplicate build twice in succession, hero effects only on importance-5 lines, one hero transition per section, and enough readable hold time.
-5. Persist the resulting `stylePlan` beside the timeline. Rendering only consumes this plan; rerunning with the same seed produces the same choices.
+1. Resolve one of eight capability-checked scene engines: `editorial-depth`, `heritage-print`, `street-photocopy`, `live-stage`, `indie-night`, `memory-light`, `folk-paper`, or `city-route`.
+2. Select one compatible background. The automatic WebGL route starts with a profile-specific authored procedural material, not the song cover: folk uses paper/landscape or city-trace material, pop uses a soft-focus memory-light material, and rap uses its editorial art plate. A supplied cover is an optional artist-personalization overlay, never the default background. An external AI/AE plate is only selected if its license and lyric-safe zone are recorded.
+3. Select a font pairing: a primary readable face plus an optional emphasis face. Use any local project font marked `recorded`, including an artist-declared free-commercial font.
+4. Resolve inferred or explicit verse/chorus/outro sections. Each section records its range, scene engine, background, intensity, and optional transition.
+5. Select effect families compatible with the visual profile and user intent. A line receives `build`, `breathe`, and `resolve`; a section may contribute one transition and effect defaults.
+6. Apply constraints: explicit line override > explicit section override > user style intent > profile rules. Do not select excluded effects, repeat adjacent builds, or exceed the requested animation intensity.
+7. Persist the resulting `stylePlan` beside the timeline and validate it against the renderer capability contract. Rendering only consumes a passing plan; rerunning with the same seed produces the same choices.
 
 ## Profile routing
 

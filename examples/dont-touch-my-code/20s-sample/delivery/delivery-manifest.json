@@ -1,15 +1,17 @@
 {
   "schemaVersion": 1,
-  "sample": "dont-touch-my-code-20s",
-  "status": "passed",
+  "job": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/job.json",
+  "audio": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/dont-touch-my-code.mp3",
+  "timeline": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/timeline.json",
   "artifacts": {
-    "timeline": "../timeline.json",
-    "audioProfile": "audio.json",
-    "songProfile": "song-profile.json",
-    "direction": "direction.json",
-    "stylePlan": "style-plan.json",
-    "timelineValidation": "timeline-validation.json",
-    "video": "master-16x9.mp4",
-    "videoValidation": "delivery-validation.json"
-  }
+    "audioProfile": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/audio.json",
+    "songProfile": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/song-profile.json",
+    "direction": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/direction.json",
+    "stylePlan": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/style-plan.json",
+    "stylePlanValidation": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/style-plan-validation.json",
+    "timelineValidation": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/timeline-validation.json",
+    "video": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/master-16x9.mp4",
+    "videoValidation": "/Users/owen/works/subtitle-mv/examples/dont-touch-my-code/20s-sample/delivery/delivery-validation.json"
+  },
+  "status": "passed"
 }
