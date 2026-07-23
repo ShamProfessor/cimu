@@ -109,6 +109,25 @@ Cimu 默认不会搜索网络素材，也不会在线生成 AI 背景。
 
 纯文本会先生成时间草稿，并在本地时间轴编辑器中逐句审核。未经审核的自动时间不能作为正式交付。
 
+### 本地歌词时间轴编辑器
+
+当歌词没有可靠时间码，或现有 LRC/SRT/ASS 需要修正时，可以直接告诉 Agent：
+
+```text
+用 cimu 打开本地歌词时间轴编辑器。
+导入这首歌和歌词，让我逐句校对时间；确认后继续生成 MV。
+```
+
+Agent 会在本机启动编辑器并打开浏览器。编辑器只运行在 `127.0.0.1`，不需要登录，也不会上传音频和歌词。
+
+1. 导入 LRC、SRT、ASS，或按行粘贴纯文本歌词。
+2. 选择本地音频，播放时会自动高亮当前歌词。
+3. 调整每一句的文本、入场和出场时间；也可以增删、排序、拆分或合并歌词行。
+4. 处理重叠、越界、空文本和停留时间等校验提示。
+5. 点击“标记 final”并导出审核稿，Agent 随后会继续验证和渲染。
+
+![Cimu 本地歌词时间轴编辑器](docs/images/timeline-editor.jpg)
+
 ## 输入与默认规则
 
 | 项目 | 支持或默认值 |
@@ -167,9 +186,11 @@ song-project/
 
 `Don't Touch My Code` 的 20 秒横版示例（18.93s–38.93s，1280×720、30fps）：
 
-[![观看 Cimu 20 秒参考样片](https://img.youtube.com/vi/DbYPYUO8kFM/maxresdefault.jpg)](https://www.youtube.com/watch?v=DbYPYUO8kFM)
+GitHub README 不支持直接嵌入 YouTube 播放器。点击下方预览图即可在 YouTube 播放：
 
-- [在 YouTube 观看完整样片](https://www.youtube.com/watch?v=DbYPYUO8kFM)
+[![观看 Cimu 20 秒参考样片](docs/images/cimu-youtube-demo.jpg)](https://www.youtube.com/watch?v=DbYPYUO8kFM)
+
+**[▶ 在 YouTube 观看完整样片](https://www.youtube.com/watch?v=DbYPYUO8kFM)**
 - [查看时间轴](examples/dont-touch-my-code/20s-sample/timeline.json)
 - [查看视觉方案](examples/dont-touch-my-code/20s-sample/delivery/style-plan.json)
 - [查看成片验收](examples/dont-touch-my-code/20s-sample/delivery/delivery-validation.json)
