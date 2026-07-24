@@ -1,42 +1,44 @@
 ---
 name: cimu
-description: Create, review, repair, and render local lyric music videos from audio plus LRC, SRT, ASS, or plain-text lyrics. Use when a user asks to make a lyric MV, timed lyric video, subtitle music video, or to check lyric timing, choose visual direction, or export a validated 16:9 or 9:16 lyric-video deliverable. Handle the local rendering workflow yourself; do not require users to run shell commands.
+description: Create, revise, review, and export local lyric music videos from audio plus a reviewed LRC, SRT, ASS, or timeline. Use when a user asks for a lyric MV, timed subtitle video, visual style revision, timing revision, or a validated 16:9 or 9:16 export. Agents own the technical workflow; users supply files and creative direction.
 ---
 
 # Cimu（词幕）
 
-Turn local audio and lyrics into a reviewable, reproducible lyric-video delivery. Own the technical workflow: users should describe the desired result and provide files, not execute scripts or manipulate JSON.
+Turn local audio and reviewed lyrics into a reproducible lyric-video delivery. Keep source media unchanged; write work records and logs only under the delivery directory’s `.cimu/`.
 
-## Start with the user's request
+## Route inputs
 
-1. Identify the local audio and lyric inputs already attached or named by the user. Ask only for missing essentials: source audio, lyrics, target range when not the full song, and requested aspect ratio. Default to a 16:9 review render; make a 1080p master only when the user asks for a final export.
-2. State the short plan in plain language. Do not show Node, FFmpeg, or internal script commands unless the user explicitly asks for developer instructions.
-3. Run `scripts/check-runtime.mjs` from this skill directory. If a required runtime is unavailable, report the exact missing dependency and stop before producing a misleading partial delivery. When Chrome is installed outside the discovered paths, use `LYRIC_MV_CHROME_PATH`.
+- A new render needs audio plus an LRC/SRT/ASS-derived reviewed timeline. Plain-text lyrics require line-level human timing review first.
+- A revision starts by reading `.cimu/context-card.json`, then calls the single preferred entry once: `node scripts/cimu-run.mjs --mode revision --changed style|timing|lyrics|format --quiet --summary-json` from the delivery directory.
+- A new render calls the same entry with `--mode new --changed audio --audio … --timeline …`. `cimu-run`/`run-delivery` performs the only normal runtime check; do not run it separately.
+- Do not call build, analysis, validation, rendering, or QA scripts one by one to “confirm state”. Diagnose a specific failing stage only after the entry point returns an error code.
 
-## Prepare timing
+## Incremental execution
 
-- For LRC, SRT, or ASS, build and validate a timeline with `scripts/build-lyric-timeline.mjs` and `scripts/validate-lyric-timeline.mjs`.
-- For plain text, treat all timings as drafts. Start `scripts/serve-timeline-editor.mjs`, guide the user through line-level timing review in the local editor, and continue only with its reviewed export.
-- Keep source lyrics unchanged. Write working timelines and delivery output to a clearly named per-song work directory; do not overwrite user source files.
-- Read `references/input-contract.md` only when mapping inputs or output JSON. Read `references/timeline-editor.md` only when the local editor is needed.
+`.cimu/session.json` owns input fingerprints and reusable artifact paths. Respect its DAG:
 
-## Render and validate
+| Change | Run | Reuse |
+|---|---|---|
+| `style` | StylePlan, render, QA | audio, timeline, lyric direction |
+| `format` | render, QA | audio, timeline, StylePlan |
+| `timing` / `lyrics` | direction, StylePlan, render, QA | audio |
+| `audio` / new | full pipeline | nothing |
 
-1. Use `scripts/run-delivery.mjs` after timing is reviewed. Omit the visual-profile override unless the user specifies a visual direction; keep the technical record in the hidden `.cimu` work folder rather than exposing it as delivery files.
-2. Translate natural-language style requests into `styleIntent`, explicit `sections`, or reviewed line-level `effectPlan` overrides. Respect requested intensity, preferred effects, excluded effects, and scene engine. Never invent an effect ID.
-3. Require StylePlan validation to pass before pixel rendering. Unknown, phase-mismatched, excluded, or unsupported effects must block delivery rather than silently degrade.
-4. Use the 1280×720/24fps preview preset for first review; use 1920×1080/30fps only for an explicitly requested landscape master. Produce 9:16 only when explicitly requested and review its safe area independently.
-5. Do not call a preview delivered. Verify timeline and rendered-video checks, then inspect the opening, a dense lyric section, a hook or hero line, a transition, and the ending at delivery resolution.
-6. Report the exported MP4, output directory, aspect ratio, duration, timing-review status, and any remaining limitation in plain language.
+Do not re-read complete lyrics, timing, audio analysis, StylePlan, old logs, or all `.cimu` files when the session fingerprint and requested scope say they are reusable. Use `scripts/summarize-artifact.mjs --input … [--range start:end]` for targeted inspection.
 
-## Creative and safety rules
+## Quiet delivery and QA
 
-- Keep lyrics in a single readable lane and preserve sentence reading order.
-- Keep creative choices deterministic and persisted in `style-plan.json`; explicit reviewed overrides win.
-- Use the eight registered scene engines and the effects declared in `manifests/effects.json`. AI directs and composes registered capabilities; it does not generate unreviewed renderer code during a delivery.
-- Never claim that automatically generated plain-text timings are delivery-ready.
-- Use `references/manual-overrides.md` only for intentional recorded overrides, `references/style-resolution.md` for routing changes, and `references/technical-architecture-zh-CN.md` only when modifying the renderer.
+- Default to `--quiet` (the default). Full subprocess logs belong in `.cimu/logs/<run-id>.log`; complete reports stay in `.cimu/*.json`.
+- `--summary-json` returns one machine-readable line. `--verbose` is only for human debugging and may print the detailed log.
+- Success reports only status, stage, MP4 path, duration, resolution, and log path. Failures report stage, error code, log path, and at most ten lines.
+- Rendered-video validation must pass. Visual QA opens only `.cimu/review-sheet.jpg`, a five-frame contact sheet (opening, dense lyric, hook, transition, ending). Open at most one matching original frame only when the sheet identifies a concrete problem.
+- End every user-facing turn with a handoff summary under 600 characters: result, changed scope, delivery path, review status, and the next allowed action.
 
-## Maintain the skill
+## Context and token policy
 
-Run `scripts/release-check.mjs` before distributing an edited skill. This checks the portable runtime and core contracts; a rendered sample still requires human visual review. These are maintainer checks, not user instructions.
+Default to silent execution and compact paths. Continue from `context-card.json`; never reconstruct context by reading old chats, scanning `.cimu`, dumping JSON, dumping lyrics, dumping logs, returning audio-frame arrays, base64, or a gallery of screenshots. Read references only when the requested work needs them: `input-contract.md` for input mapping, `timeline-editor.md` for timing review, `manual-overrides.md` for recorded overrides, `style-resolution.md` for routing changes, and `technical-architecture-zh-CN.md` only for renderer maintenance.
+
+## Maintainers
+
+Run `scripts/release-check.mjs` and the project tests before distributing a changed skill. Architecture and effect details intentionally live in `references/` and manifests rather than this routing file.

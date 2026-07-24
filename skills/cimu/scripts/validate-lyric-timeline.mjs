@@ -21,5 +21,7 @@ if (allowReviewRequired) {
   report.passed = report.errors.length === 0;
 }
 if (outputPath) writeFileSync(resolve(outputPath), JSON.stringify(report, null, 2));
-console.log(JSON.stringify(report, null, 2));
+const summary = {status:report.passed ? 'passed' : 'failed', stage:'timelineQa', passed:report.passed, errorCodes:report.errors.map((issue) => issue.code), warningCount:report.warnings.length, report:outputPath ? resolve(outputPath) : null};
+if (process.argv.includes('--verbose')) console.log(JSON.stringify(report, null, 2));
+else console.log(process.argv.includes('--summary-json') ? JSON.stringify(summary) : `${report.passed ? 'PASS' : 'FAIL'} stage=timelineQa report=${summary.report ?? 'none'} errors=${summary.errorCodes.join(',') || 'none'} warnings=${summary.warningCount}`);
 if (report.errors.length) process.exit(1);

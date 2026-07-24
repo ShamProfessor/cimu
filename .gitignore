@@ -16,5 +16,7 @@ test/*
 !test/fixtures/**
 !test/timeline-editor-core.test.mjs
 !test/style-plan-core.test.mjs
+!test/cimu-context-pipeline.test.mjs
+!test/cimu-review-sheet.test.mjs
 
 deliveries/

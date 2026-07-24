@@ -138,9 +138,9 @@ function encodeVideo(config, frames, output) {
     '-ss', String(config.start + config.from), '-t', String(config.duration), '-i', config.audio,
     '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
     '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output,
-  ], {stdio: 'inherit', timeout: config.encodeTimeout * 1000, killSignal: 'SIGTERM'});
+  ], {encoding:'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: config.encodeTimeout * 1000, killSignal: 'SIGTERM'});
   if (encode.error) throw new Error(`FFmpeg encode failed: ${encode.error.message}`);
-  if (encode.status !== 0) throw new Error(`FFmpeg encode failed with status ${encode.status ?? 'unknown'}.`);
+  if (encode.status !== 0) throw new Error(`FFmpeg encode failed with status ${encode.status ?? 'unknown'}. ${(encode.stderr ?? '').trim()}`);
 }
 
 function workerArguments(config, frames, workerIndex, workerCount) {
@@ -157,9 +157,12 @@ function workerArguments(config, frames, workerIndex, workerCount) {
 
 function runWorker(config, frames, workerIndex, workerCount) {
   return new Promise((resolveWorker, rejectWorker) => {
-    const child = spawn(process.execPath, [process.argv[1], ...workerArguments(config, frames, workerIndex, workerCount)], {stdio:'inherit'});
+    const child = spawn(process.execPath, [process.argv[1], ...workerArguments(config, frames, workerIndex, workerCount)], {stdio:['ignore', 'pipe', 'pipe']});
+    let output = '';
+    child.stdout?.on('data', (chunk) => { output = `${output}${chunk}`.slice(-6000); });
+    child.stderr?.on('data', (chunk) => { output = `${output}${chunk}`.slice(-6000); });
     child.once('error', rejectWorker);
-    child.once('exit', (code, signal) => code === 0 ? resolveWorker() : rejectWorker(new Error(`Render worker ${workerIndex + 1}/${workerCount} failed (${code ?? signal ?? 'unknown'}).`)));
+    child.once('exit', (code, signal) => code === 0 ? resolveWorker() : rejectWorker(new Error(`Render worker ${workerIndex + 1}/${workerCount} failed (${code ?? signal ?? 'unknown'}). ${output.trim()}`)));
   });
 }
 

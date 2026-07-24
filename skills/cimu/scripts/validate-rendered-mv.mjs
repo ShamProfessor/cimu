@@ -23,4 +23,8 @@ try {
 } finally { rmSync(temporary,{recursive:true,force:true}); }
 if(!allowBlackBackground&&edges.some((entry)=>entry.darkEdgeRatio>.94)) errors.push({code:'black-edge-seam',samples:edges});
 const report={schemaVersion:1,input:resolve(input),timeline:resolve(timelinePath),duration:Number(duration.toFixed(3)),dimensions:{width:video?.width??null,height:video?.height??null},intentionalBlackBackground:allowBlackBackground,edgeSamples:edges,errors,warnings,passed:errors.length===0};
-if(output){mkdirSync(dirname(resolve(output)),{recursive:true});writeFileSync(resolve(output),JSON.stringify(report,null,2));} console.log(JSON.stringify(report,null,2)); if(errors.length)process.exit(1);
+if(output){mkdirSync(dirname(resolve(output)),{recursive:true});writeFileSync(resolve(output),JSON.stringify(report,null,2));}
+const summary={status:report.passed?'passed':'failed',stage:'videoQa',passed:report.passed,errorCodes:errors.map((entry)=>entry.code),warningCount:warnings.length,report:output?resolve(output):null};
+if(process.argv.includes('--verbose')) console.log(JSON.stringify(report,null,2));
+else console.log(process.argv.includes('--summary-json')?JSON.stringify(summary):`${report.passed?'PASS':'FAIL'} stage=videoQa report=${summary.report??'none'} errors=${summary.errorCodes.join(',')||'none'} warnings=${summary.warningCount}`);
+if(errors.length)process.exit(1);
