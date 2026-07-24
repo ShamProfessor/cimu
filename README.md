@@ -179,10 +179,21 @@ song-project/
 
 ## 参考样片
 
-`Don't Touch My Code` 的 20 秒横版示例（18.93s–38.93s，1280×720、30fps）：
-点击下方预览图播放：
+`个人原创歌曲《Don't Touch My Code》`的 30 秒横版示例【纯黑背景】：
 
-[![观看 Cimu 20 秒参考样片](docs/images/cimu-youtube-demo.jpg)](https://www.youtube.com/watch?v=DbYPYUO8kFM)
+https://github.com/user-attachments/assets/8bc65708-9acb-4933-9579-904586e9f93c
+
+`王以太、艾热 《周旋》`【AI自适应背景】
+
+https://github.com/user-attachments/assets/099e0930-b54c-4174-bec0-4fedbdec6d4d
+
+`《爱情转移》副歌片段【AI自适应专辑封面】`
+
+https://github.com/user-attachments/assets/9da23a4d-4e4c-47f6-8236-6129afd8625f
+
+自定义本地素材背景【已强制压缩画质】
+
+https://github.com/user-attachments/assets/4f7fdb5e-ab0c-4886-8849-367da245f35a
 
 ## 维护与开发
 
